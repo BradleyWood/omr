@@ -922,6 +922,7 @@ TR::Register *OMR::X86::TreeEvaluator::fpConvertToInt(TR::Node *node, TR::Symbol
             tempMR = generateX86MemoryReference(child, cg);
             floatReg = cg->allocateRegister(TR_X87);
             generateFPRegMemInstruction(FLDRegMem, node, floatReg, tempMR, cg);
+
             resultReg = cg->allocateRegister();
             loadInstr = generateRegMemInstruction(CVTTSS2SIReg4Mem, node, resultReg,
                                                   generateX86MemoryReference(*tempMR, 0, cg), cg);
@@ -1030,7 +1031,7 @@ TR::Register *OMR::X86::TreeEvaluator::fpConvertToLong(TR::Node *node, TR::Symbo
       TR::Register        *doubleReg = cg->evaluate(child);
       TR::Register        *lowReg    = cg->allocateRegister(TR_GPR);
       TR::Register        *highReg   = cg->allocateRegister(TR_GPR);
-      TR::RealRegister *espReal   = cg->machine()->getRealRegister(TR::RealRegister::esp);
+      TR::RealRegister    *espReal   = cg->machine()->getRealRegister(TR::RealRegister::esp);
 
       deps = generateRegisterDependencyConditions((uint8_t) 0, 3, cg);
       deps->addPostCondition(lowReg, TR::RealRegister::NoReg, cg);
@@ -1078,8 +1079,10 @@ TR::Register *OMR::X86::TreeEvaluator::fpConvertToLong(TR::Node *node, TR::Symbo
       TR::Register *lowReg    = cg->allocateRegister(TR_GPR);
       TR::Register *highReg   = cg->allocateRegister(TR_GPR);
       TR::Register *doubleReg = cg->evaluate(child);
-      if (doubleReg->getKind() == TR_FPR)
-         doubleReg = TR::TreeEvaluator::coerceXMMRToFPR(child, doubleReg, cg);
+
+      TR::MemoryReference  *tempMR = cg->machine()->getDummyLocalMR(TR::Float);
+      generateMemRegInstruction(MOVSSMemReg, node, tempMR, doubleReg, cg);
+      generateMemInstruction(FLDMem, node, generateX86MemoryReference(*tempMR, 0, cg), cg);
 
       TR::RegisterDependencyConditions  *deps;
 
@@ -1090,46 +1093,37 @@ TR::Register *OMR::X86::TreeEvaluator::fpConvertToLong(TR::Node *node, TR::Symbo
       startLabel->setStartInternalControlFlow();
       reStartLabel->setEndInternalControlFlow();
 
-      if (doubleReg && doubleReg->needsPrecisionAdjustment())
-         {
-         TR::TreeEvaluator::insertPrecisionAdjustment(doubleReg, node, cg);
-         }
-
       generateLabelInstruction(LABEL, node, startLabel, cg);
 
       // These instructions must be set appropriately prior to the creation
       // of the snippet near the end of this method. Also see warnings below.
       //
-      TR::X86FPST0STiRegRegInstruction  *clobInstruction;  // loads a clobberable copy of the float/double
       TR::X86RegMemInstruction          *loadHighInstr;    // loads the high dword of the converted long
       TR::X86RegMemInstruction          *loadLowInstr;     // loads the low dword of the converted long
 
-      TR::Register *tempFPR1 = child->getOpCode().isFloat() ? cg->allocateSinglePrecisionRegister(TR_X87)
-                                                            : cg->allocateRegister(TR_X87);
-
-      // WARNING:
-      //
-      // The following instruction is dissected in the snippet to determine the original double register.
-      // If this instruction changes, or if you add any instructions that manipulate the FP stack between
-      // here and the call to the snippet, you may need to change the snippet also.
-      //
-      clobInstruction = generateFPST0STiRegRegInstruction(FLDRegReg, node, tempFPR1, doubleReg, cg);
+      generateInstruction(FLDDUP, node, cg);
 
       // For slow conversion only, change the rounding mode on the FPU via its control word register.
       //
+
       int16_t fpcw = comp->getJittedMethodSymbol()->usesSinglePrecisionMode() ?
-                     SINGLE_PRECISION_ROUND_TO_ZERO : DOUBLE_PRECISION_ROUND_TO_ZERO;
-
-      generateMemInstruction(LDCWMem, node, generateX86MemoryReference(cg->findOrCreate2ByteConstant(node, fpcw), cg), cg);
-
+            SINGLE_PRECISION_ROUND_TO_ZERO : DOUBLE_PRECISION_ROUND_TO_ZERO;
       TR::MemoryReference  *convertedLongMR = (cg->machine())->getDummyLocalMR(TR::Int64);
-      generateFPMemRegInstruction(FLSTPMem, node, convertedLongMR, tempFPR1, cg);
-      cg->stopUsingRegister(tempFPR1);
 
-      fpcw = comp->getJittedMethodSymbol()->usesSinglePrecisionMode() ?
-             SINGLE_PRECISION_ROUND_TO_NEAREST : DOUBLE_PRECISION_ROUND_TO_NEAREST;
+      if (cg->comp()->target().cpu.supportsFeature(OMR_FEATURE_X86_SSE3))
+         {
+         generateMemInstruction(FLSTTPMem, node, convertedLongMR, cg);
+         }
+      else
+         {
+         generateMemInstruction(LDCWMem, node, generateX86MemoryReference(cg->findOrCreate2ByteConstant(node, fpcw), cg), cg);
+         generateMemInstruction(FLSTPMem, node, convertedLongMR, cg);
 
-      generateMemInstruction(LDCWMem, node, generateX86MemoryReference(cg->findOrCreate2ByteConstant(node, fpcw), cg), cg);
+         fpcw = comp->getJittedMethodSymbol()->usesSinglePrecisionMode() ?
+                SINGLE_PRECISION_ROUND_TO_NEAREST : DOUBLE_PRECISION_ROUND_TO_NEAREST;
+
+         generateMemInstruction(LDCWMem, node, generateX86MemoryReference(cg->findOrCreate2ByteConstant(node, fpcw), cg), cg);
+         }
 
       // WARNING:
       //
@@ -1154,7 +1148,7 @@ TR::Register *OMR::X86::TreeEvaluator::fpConvertToLong(TR::Node *node, TR::Symbo
       cg->addSnippet( new (cg->trHeapMemory()) TR::X86FPConvertToLongSnippet(reStartLabel,
                                                                              snippetLabel,
                                                                              helperSymRef,
-                                                                             clobInstruction,
+                                                                             node,
                                                                              loadHighInstr,
                                                                              loadLowInstr,
                                                                              cg) );
@@ -1181,7 +1175,7 @@ TR::Register *OMR::X86::TreeEvaluator::fpConvertToLong(TR::Node *node, TR::Symbo
       //
       if ((cg->decReferenceCount(child) == 0) || (child->getRegister()->getKind() == TR_FPR))
          {
-         generateFPSTiST0RegRegInstruction(FSTRegReg, node, doubleReg, doubleReg, cg);
+         generateInstruction(FSTPST0, node, cg);
          }
 
       TR::Register *targetRegister = cg->allocateRegisterPair(lowReg, highReg);
