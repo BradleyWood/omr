@@ -121,30 +121,6 @@ void OMR::X86::TreeEvaluator::coerceFPOperandsToXMMRs(TR::Node *node, TR::CodeGe
    }
 
 
-TR::Register *OMR::X86::TreeEvaluator::coerceXMMRToFPR(TR::Node *node, TR::Register *xmmRegister, TR::CodeGenerator *cg)
-   {
-   TR_ASSERT(xmmRegister && xmmRegister->getKind() == TR_FPR, "incorrect register type for FPR coercion\n");
-
-   TR::Register *fpRegister;
-
-   if (xmmRegister->isSinglePrecision())
-      {
-      fpRegister = cg->allocateSinglePrecisionRegister(TR_X87);
-      TR::MemoryReference  *tempMR = cg->machine()->getDummyLocalMR(TR::Float);
-      generateMemRegInstruction(MOVSSMemReg, node, tempMR, xmmRegister, cg);
-      generateFPRegMemInstruction(FLDRegMem, node, fpRegister, generateX86MemoryReference(*tempMR, 0, cg), cg);
-      }
-   else
-      {
-      fpRegister = cg->allocateRegister(TR_X87);
-      TR::MemoryReference  *tempMR = cg->machine()->getDummyLocalMR(TR::Double);
-      generateMemRegInstruction(MOVSDMemReg, node, tempMR, xmmRegister, cg);
-      generateFPRegMemInstruction(DLDRegMem, node, fpRegister, generateX86MemoryReference(*tempMR, 0, cg), cg);
-      }
-
-   return fpRegister;
-   }
-
 void OMR::X86::TreeEvaluator::insertPrecisionAdjustment(TR::Register      *reg,
                                                     TR::Node          *root,
                                                     TR::CodeGenerator *cg)
@@ -464,6 +440,9 @@ TR::Register *OMR::X86::TreeEvaluator::fpReturnEvaluator(TR::Node *node, TR::Cod
    TR::RealRegister::RegNum machineReturnRegister =
       (returnRegister->isSinglePrecision())? linkageProperties.getFloatReturnRegister() : linkageProperties.getDoubleReturnRegister();
 
+   TR_ReturnInfo returnInfo = (returnRegister->isSinglePrecision()) ? TR_FloatXMMReturn : TR_DoubleXMMReturn;
+   bool x87Return = false;
+
    /**
     *  On 32-bit targets, regardless of whether the target processor
     *  supports SSE or not, some linkages may still require a floating
@@ -476,7 +455,19 @@ TR::Register *OMR::X86::TreeEvaluator::fpReturnEvaluator(TR::Node *node, TR::Cod
        returnRegister->getKind() == TR_FPR)
       {
       // TODO: Modify linkage to allow the returned value to remain in an XMMR.
-      returnRegister = TR::TreeEvaluator::coerceXMMRToFPR(node->getFirstChild(), returnRegister, cg);
+      if (returnRegister->isSinglePrecision())
+         {
+         TR::MemoryReference  *tempMR = cg->machine()->getDummyLocalMR(TR::Float);
+         generateMemRegInstruction(MOVSSMemReg, node, tempMR, returnRegister, cg);
+         generateMemInstruction(FLDMem, node, generateX86MemoryReference(*tempMR, 0, cg), cg);
+         }
+      else
+         {
+         TR::MemoryReference  *tempMR = cg->machine()->getDummyLocalMR(TR::Double);
+         generateMemRegInstruction(MOVSDMemReg, node, tempMR, returnRegister, cg);
+         generateMemInstruction(DLDMem, node, generateX86MemoryReference(*tempMR, 0, cg), cg);
+         }
+      x87Return = true;
       }
    else if (returnRegister->mayNeedPrecisionAdjustment())
       {
@@ -494,7 +485,12 @@ TR::Register *OMR::X86::TreeEvaluator::fpReturnEvaluator(TR::Node *node, TR::Cod
    if (machineReturnRegister != TR::RealRegister::NoReg)
       {
       dependencies = generateRegisterDependencyConditions((uint8_t)1, 0, cg);
-      dependencies->addPreCondition(returnRegister, machineReturnRegister, cg);
+
+      if (!x87Return)
+         {
+         dependencies->addPreCondition(returnRegister, machineReturnRegister, cg);
+         }
+
       dependencies->stopAddingConditions();
       }
 
@@ -509,10 +505,7 @@ TR::Register *OMR::X86::TreeEvaluator::fpReturnEvaluator(TR::Node *node, TR::Cod
 
    if (comp->getJittedMethodSymbol()->getLinkageConvention() == TR_Private)
       {
-      if (cg->useSSEForDoublePrecision())
-         comp->setReturnInfo((returnRegister->isSinglePrecision()) ? TR_FloatXMMReturn : TR_DoubleXMMReturn);
-      else
-         comp->setReturnInfo((returnRegister->isSinglePrecision()) ? TR_FloatReturn : TR_DoubleReturn);
+      comp->setReturnInfo(returnInfo);
       }
 
    cg->decReferenceCount(node->getFirstChild());
