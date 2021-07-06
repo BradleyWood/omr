@@ -1467,6 +1467,12 @@ uint8_t* TR::X86RegRegInstruction::generateOperand(uint8_t* cursor)
       {
       applySourceRegisterToModRMByte(modRM);
       }
+
+   if (getOpCode().isEvexInstruction())
+      {
+      toRealRegister(_sourceRegister)->setSourceRegisterFieldInEVEX(cursor - 5);
+      toRealRegister(getTargetRegister())->setTargetRegisterFieldInEVEX(cursor - 5);
+      }
    return cursor;
    }
 
@@ -1478,6 +1484,7 @@ uint8_t* TR::X86RegRegRegInstruction::generateOperand(uint8_t* cursor)
    {
    TR_ASSERT(getOpCode().info().supportsAVX(), "TR::X86RegRegRegInstruction must be an AVX instruction.");
    uint8_t *modRM = cursor - 1;
+
    if (getOpCode().hasTargetRegisterIgnored() == 0)
       {
       applyTargetRegisterToModRMByte(modRM);
@@ -1486,7 +1493,18 @@ uint8_t* TR::X86RegRegRegInstruction::generateOperand(uint8_t* cursor)
       {
       applySourceRegisterToModRMByte(modRM);
       }
-   applySource2ndRegisterToVEX(modRM - 2);
+
+   if (getOpCode().isEvexInstruction())
+      {
+      applySource2ndRegisterToEVEX(modRM - 3);
+      applyTargetRegisterToEvex(modRM - 4);
+      applySourceRegisterToEvex(modRM - 4);
+      }
+   else
+      {
+      applySource2ndRegisterToVEX(modRM - 2);
+      }
+
    return cursor;
    }
 
@@ -1922,6 +1940,11 @@ bool TR::X86MemInstruction::needsLockPrefix()
 
 uint8_t* TR::X86MemInstruction::generateOperand(uint8_t* cursor)
    {
+   if (OMR::X86::Instruction::getOpCode().isEvexInstruction())
+      {
+      getMemoryReference()->setForceWideDisplacement(); // todo; implement compressed displacement for evex instructions
+      }
+
    return getMemoryReference()->generateBinaryEncoding(cursor - 1, this, cg());
    }
 
@@ -2268,6 +2291,12 @@ uint8_t* TR::X86MemRegInstruction::generateOperand(uint8_t* cursor)
       {
       toRealRegister(getSourceRegister())->setRegisterFieldInModRM(cursor - 1);
       }
+
+   if (getOpCode().isEvexInstruction())
+      {
+      toRealRegister(getSourceRegister())->setTargetRegisterFieldInEVEX(cursor - 5);
+      }
+
    cursor = getMemoryReference()->generateBinaryEncoding(cursor - 1, this, cg());
    return cursor;
    }
@@ -2378,6 +2407,13 @@ uint8_t* TR::X86RegMemInstruction::generateOperand(uint8_t* cursor)
       {
       toRealRegister(getTargetRegister())->setRegisterFieldInModRM(cursor - 1);
       }
+
+   if (getOpCode().isEvexInstruction())
+      {
+      getMemoryReference()->setForceWideDisplacement(); // todo; implement compressed displacement for evex instructions
+      toRealRegister(getTargetRegister())->setTargetRegisterFieldInEVEX(cursor - 5);
+      }
+
    cursor = getMemoryReference()->generateBinaryEncoding(cursor - 1, this, cg());
    return cursor;
    }
@@ -2441,10 +2477,22 @@ uint8_t* TR::X86RegRegMemInstruction::generateOperand(uint8_t* cursor)
       {
       applyTargetRegisterToModRMByte(modRM);
       }
-   applySource2ndRegisterToVEX(modRM - 2);
+
+   if (getOpCode().isEvexInstruction())
+      {
+      getMemoryReference()->setForceWideDisplacement(); // todo; implement compressed displacement for evex instructions
+      applySource2ndRegisterToEVEX(cursor - 4);
+      applyTargetRegisterToEvex(cursor - 5);
+      }
+   else
+      {
+      applySource2ndRegisterToVEX(modRM - 2);
+      }
+
    cursor = getMemoryReference()->generateBinaryEncoding(modRM, this, cg());
    return cursor;
    }
+
 
 
 // -----------------------------------------------------------------------------
