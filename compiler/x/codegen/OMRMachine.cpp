@@ -207,7 +207,7 @@ OMR::X86::Machine::Machine
 
 void OMR::X86::Machine::resetXMMGlobalRegisters()
    {
-   for (int32_t i = 0; i < TR::RealRegister::NumXMMRegisters; i++)
+   for (int32_t i = 0; i < getLastXMMR() - TR::RealRegister::FirstXMMR + 1; i++)
       self()->setXMMGlobalRegister(i, NULL);
    }
 
@@ -284,7 +284,7 @@ OMR::X86::Machine::findBestFreeGPRegister(TR::Instruction   *currentInstruction,
       case TR_QuadWordReg:
          // xmm/ymm/zmm are aliased
          first = TR::RealRegister::FirstXMMR;
-         last  = TR::RealRegister::LastXMMR;
+         last  = getLastXMMR();
          break;
       default:
          TR_ASSERT(0, "unknown register size requested\n");
@@ -469,7 +469,7 @@ TR::RealRegister *OMR::X86::Machine::freeBestGPRegister(TR::Instruction         
       case TR_QuadWordReg:
          // xmm/ymm/zmm are aliased
          first = TR::RealRegister::FirstXMMR;
-         last  = TR::RealRegister::LastXMMR;
+         last  = getLastXMMR();
          break;
       default:
          TR_ASSERT(0, "unknown register size requested\n");
@@ -1667,7 +1667,7 @@ OMR::X86::Machine::initializeRegisterFile(const struct TR::X86LinkageProperties 
                                                   TR::RealRegister::fprMask((TR::RealRegister::RegNum)reg), self()->cg());
       }
 
-   for(reg = TR::RealRegister::FirstXMMR; reg <= TR::RealRegister::LastXMMR; reg++)
+   for(reg = TR::RealRegister::FirstXMMR; reg <= getLastXMMR(); reg++)
       {
       _registerFile[reg] = new (self()->cg()->trHeapMemory()) TR::RealRegister(TR_FPR,
                                                   properties.isPreservedRegister((TR::RealRegister::RegNum)reg) ? PRESERVED_WEIGHT : NONPRESERVED_WEIGHT,
@@ -1697,7 +1697,7 @@ TR::RegisterDependencyConditions * OMR::X86::Machine::createDepCondForLiveGPRs()
    // Calculate number of register dependencies required.  This step is not really necessary, but
    // it is space conscious.
    //
-   for (i = TR::RealRegister::FirstGPR; i <= TR::RealRegister::LastXMMR; i = ((i==TR::RealRegister::LastAssignableGPR) ? TR::RealRegister::FirstXMMR : i+1))
+   for (i = TR::RealRegister::FirstGPR; i <= getLastXMMR(); i = ((i==TR::RealRegister::LastAssignableGPR) ? TR::RealRegister::FirstXMMR : i+1))
       {
       TR::RealRegister *realReg = self()->getRealRegister((TR::RealRegister::RegNum)i);
       if (realReg->getState() == TR::RealRegister::Assigned ||
@@ -1711,7 +1711,7 @@ TR::RegisterDependencyConditions * OMR::X86::Machine::createDepCondForLiveGPRs()
    if (c)
       {
       deps = generateRegisterDependencyConditions(0, c, self()->cg());
-      for (i = TR::RealRegister::FirstGPR; i <= TR::RealRegister::LastXMMR; i = ((i==TR::RealRegister::LastAssignableGPR) ? TR::RealRegister::FirstXMMR : i+1))
+      for (i = TR::RealRegister::FirstGPR; i <= getLastXMMR(); i = ((i==TR::RealRegister::LastAssignableGPR) ? TR::RealRegister::FirstXMMR : i+1))
          {
          TR::RealRegister *realReg = self()->getRealRegister((TR::RealRegister::RegNum)i);
          if (realReg->getState() == TR::RealRegister::Assigned ||
@@ -1753,7 +1753,7 @@ TR::RegisterDependencyConditions * OMR::X86::Machine::createCondForLiveAndSpille
    TR_LiveRegisters *liveFPRs = self()->cg()->getLiveRegisters(TR_FPR);
    TR_LiveRegisters *liveVRFs = self()->cg()->getLiveRegisters(TR_VRF);
    if ((liveFPRs && liveFPRs->getNumberOfLiveRegisters() > 0) || (liveVRFs && liveVRFs->getNumberOfLiveRegisters() > 0))
-      endReg = TR::RealRegister::LastXMMR;
+      endReg = getLastXMMR();
    for (i = TR::RealRegister::FirstGPR; i <= endReg; i = ((i==TR::RealRegister::LastAssignableGPR) ? TR::RealRegister::FirstXMMR : i+1))
       {
       TR::RealRegister *realReg = self()->getRealRegister((TR::RealRegister::RegNum)i);
@@ -1810,7 +1810,7 @@ TR::RealRegister **OMR::X86::Machine::captureRegisterFile()
    TR::RealRegister **registerFileClone =
       (TR::RealRegister **)self()->cg()->trMemory()->allocateMemory(arraySize, heapAlloc);
 
-   int32_t endReg = TR::RealRegister::LastXMMR;
+   int32_t endReg = getLastXMMR();
    for (int32_t i = TR::RealRegister::FirstGPR; i <= endReg; i = ((i==TR::RealRegister::LastAssignableGPR) ? TR::RealRegister::FirstXMMR : i+1))
       {
       registerFileClone[i] =
@@ -1827,7 +1827,7 @@ TR::RealRegister **OMR::X86::Machine::captureRegisterFile()
 
 void OMR::X86::Machine::installRegisterFile(TR::RealRegister **registerFileCopy)
    {
-   int32_t endReg = TR::RealRegister::LastXMMR;
+   int32_t endReg = getLastXMMR();
 
    // Unlink currently assigned registers from their virtuals.  This must be done
    // before the register file is installed to prevent unintended clobbering.
@@ -1885,7 +1885,7 @@ TR::Register **OMR::X86::Machine::captureRegisterAssociations()
    TR::Register **registerAssociationsClone =
       (TR::Register **)self()->cg()->trMemory()->allocateMemory(arraySize, heapAlloc);
 
-   int32_t endReg = TR::RealRegister::LastXMMR;
+   int32_t endReg = getLastXMMR();
    for (int32_t i = TR::RealRegister::FirstGPR; i <= endReg; i = ((i==TR::RealRegister::LastAssignableGPR) ? TR::RealRegister::FirstXMMR : i+1))
       {
       if (_registerAssociations[i] != NULL)
@@ -1938,7 +1938,7 @@ TR_RegisterAssignerState::createDependenciesFromRegisterState(TR_OutlinedInstruc
    TR::Compilation *comp = _machine->cg()->comp();
    int32_t numDeps = 0;
    int32_t i;
-   int32_t endReg = TR::RealRegister::LastXMMR;
+   int32_t endReg = _machine->getLastXMMR();
    for (i = TR::RealRegister::FirstGPR; i <= endReg; i = ((i==TR::RealRegister::LastAssignableGPR) ? TR::RealRegister::FirstXMMR : i+1))
       {
       if (_registerFile[i]->getState() == TR::RealRegister::Assigned)
@@ -2081,7 +2081,7 @@ bool TR_RegisterAssignerState::isLive(TR::Register *virtReg)
    // Check the register file
    //
    int32_t i;
-   int32_t endReg = TR::RealRegister::LastXMMR;
+   int32_t endReg = _machine->getLastXMMR();
    for (i = TR::RealRegister::FirstGPR; i <= endReg; i = ((i==TR::RealRegister::LastAssignableGPR) ? TR::RealRegister::FirstXMMR : i+1))
       {
       if (_registerFile[i]->getState() == TR::RealRegister::Assigned)
@@ -2113,7 +2113,7 @@ void TR_RegisterAssignerState::dump()
       traceMsg(comp, "\nREGISTER ASSIGNER STATE\n=======================\n\nAssigned Live Registers:\n");
 
       int32_t i;
-      int32_t endReg = TR::RealRegister::LastXMMR;
+      int32_t endReg = _machine->getLastXMMR();
       for (i = TR::RealRegister::FirstGPR; i <= endReg; i = ((i==TR::RealRegister::LastAssignableGPR) ? TR::RealRegister::FirstXMMR : i+1))
          {
          if (_registerFile[i]->getState() == TR::RealRegister::Assigned)
@@ -2187,7 +2187,7 @@ void OMR::X86::Machine::adjustRegisterUseCountsDown(TR::list<OMR::RegisterUsage*
 void OMR::X86::Machine::disassociateUnspilledBackingStorage()
    {
    int32_t i;
-   int32_t endReg = TR::RealRegister::LastXMMR;
+   int32_t endReg = getLastXMMR();
    TR_BackingStore *location = NULL;
    TR::Compilation *comp = self()->cg()->comp();
 
@@ -2233,7 +2233,7 @@ void OMR::X86::Machine::disassociateUnspilledBackingStorage()
 void OMR::X86::Machine::purgeDeadRegistersFromRegisterFile()
    {
    int32_t i;
-   int32_t endReg = TR::RealRegister::LastXMMR;
+   int32_t endReg = getLastXMMR();
    for (i = TR::RealRegister::FirstGPR; i <= endReg; i = ((i==TR::RealRegister::LastAssignableGPR) ? TR::RealRegister::FirstXMMR : i+1))
       {
       if (_registerFile[i]->getState() == TR::RealRegister::Assigned)
@@ -2836,6 +2836,16 @@ TR::Instruction *OMR::X86::Machine::fpSpillStack(TR::Instruction *prevInstructio
    return cursor;
    }
 
+uint32_t OMR::X86::Machine::maxAssignableRegisters()
+   {
+   return getLastXMMR() - TR::RealRegister::FirstXMMR + 1 + TR::RealRegister::LastAssignableGPR - TR::RealRegister::FirstGPR;
+   }
+
+TR::RealRegister::RegNum OMR::X86::Machine::getLastXMMR()
+   {
+      return cg()->comp()->target().cpu.supportsFeature(OMR_FEATURE_X86_AVX512F) ? TR::RealRegister::LastXMMR : TR::RealRegister::LastSSE2XMMReg;
+   }
+
 
 #if defined(DEBUG)
 static void printOneRegisterStatus(TR_FrontEnd *fe, TR::FILE *pOutFile, TR_Debug *debug, TR::RealRegister *reg)
@@ -2855,7 +2865,7 @@ void OMR::X86::Machine::printGPRegisterStatus(TR_FrontEnd *fe, TR::RealRegister 
       {
       printOneRegisterStatus(fe, pOutFile, self()->getDebug(), registerFile[i]);
       }
-   for (i = TR::RealRegister::FirstXMMR; i <= TR::RealRegister::LastXMMR; i++)
+   for (i = TR::RealRegister::FirstXMMR; i <= getLastXMMR(); i++)
       {
       printOneRegisterStatus(fe, pOutFile, self()->getDebug(), registerFile[i]);
       }

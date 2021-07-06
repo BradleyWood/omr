@@ -76,6 +76,11 @@ class OMR_EXTENSIBLE Machine
       return _registerFile[regNum];
       }
 
+   TR::RealRegister::RegNum getNumRegisters()
+      {
+      return static_cast<TR::RealRegister::RegNum>(TR::RealRegister::NumRegisters);
+      }
+
    /**
     * \return : the cached TR::CodeGenerator object
     */
