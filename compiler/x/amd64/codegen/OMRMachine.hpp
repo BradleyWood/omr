@@ -73,6 +73,7 @@ class OMR_EXTENSIBLE Machine : public OMR::X86::Machine
 
    static uint8_t numGPRRegsWithheld(TR::CodeGenerator *cg);
    static uint8_t numRegsWithheld(TR::CodeGenerator *cg);
+   TR::RealRegister::RegNum getNumRegisters();
 
    static bool disableNewPickRegister()
       {

@@ -317,7 +317,7 @@ OMR::X86::CodeGenerator::initializeX86(TR::Compilation *comp)
 
    _linkageProperties = &self()->getLinkage()->getProperties();
 
-   _unlatchedRegisterList = (TR::RealRegister**)self()->trMemory()->allocateHeapMemory(sizeof(TR::RealRegister*)*(TR::RealRegister::NumRegisters + 1));
+   _unlatchedRegisterList = (TR::RealRegister**)self()->trMemory()->allocateHeapMemory(sizeof(TR::RealRegister*)*(machine()->getNumRegisters() + 1));
    _unlatchedRegisterList[0] = 0; // mark that list is empty
 
    self()->setGlobalRegisterTable(self()->machine()->getGlobalRegisterTable(*_linkageProperties));
@@ -485,8 +485,9 @@ OMR::X86::CodeGenerator::initializeX86(TR::Compilation *comp)
 
    if (comp->getOption(TR_TraceRA))
       {
+      int32_t lastXMM = machine()->getLastXMMR();
       self()->setGPRegisterIterator(new (self()->trHeapMemory()) TR::RegisterIterator(self()->machine(), TR::RealRegister::FirstGPR, TR::RealRegister::LastAssignableGPR));
-      self()->setFPRegisterIterator(new (self()->trHeapMemory()) TR::RegisterIterator(self()->machine(), TR::RealRegister::FirstXMMR, TR::RealRegister::LastXMMR));
+      self()->setFPRegisterIterator(new (self()->trHeapMemory()) TR::RegisterIterator(self()->machine(), TR::RealRegister::FirstXMMR, lastXMM));
       }
 
    self()->setSupportsProfiledInlining();

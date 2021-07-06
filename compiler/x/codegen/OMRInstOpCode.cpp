@@ -92,18 +92,31 @@ template <typename TBuffer> typename TBuffer::cursor_t OMR::X86::InstOpCode::OpC
 
    if (supportsAVX() && comp->target().cpu.supportsAVX())
       {
-      TR::Instruction::VEX<3> vex(rex, modrm_opcode);
-      vex.m = escape;
-      vex.L = vex_l;
-      vex.p = prefixes;
-      vex.opcode = opcode;
-      if(vex.CanBeShortened())
+      if (vex_l >> 2)
          {
-         buffer.append(TR::Instruction::VEX<2>(vex));
+         TR::Instruction::EVEX vex(rex, modrm_opcode);
+         vex.mm = escape;
+         vex.L = vex_l & 0x3;
+         vex.p = prefixes;
+         vex.opcode = opcode;
+         buffer.append(vex);
          }
       else
          {
-         buffer.append(vex);
+         TR::Instruction::VEX<3> vex(rex, modrm_opcode);
+         vex.m = escape;
+         vex.L = vex_l;
+         vex.p = prefixes;
+         vex.opcode = opcode;
+
+         if (vex.CanBeShortened())
+            {
+            buffer.append(TR::Instruction::VEX<2>(vex));
+            }
+         else
+            {
+            buffer.append(vex);
+            }
          }
       }
    else

@@ -58,3 +58,14 @@ bool OMR::X86::AMD64::Machine::enableNewPickRegister()
    {
    return !TR::Machine::disableNewPickRegister();
    }
+
+TR::RealRegister::RegNum OMR::X86::AMD64::Machine::getNumRegisters()
+   {
+   if (cg()->comp()->target().cpu.supportsFeature(OMR_FEATURE_X86_AVX512F))
+      {
+      return TR::RealRegister::NumRegisters;
+      }
+
+   return static_cast<RealRegister::RegNum>(TR::RealRegister::NumRegisters -
+                                                   (TR::RealRegister::LastXMMR - TR::RealRegister::LastSSE2XMMReg));
+   }
