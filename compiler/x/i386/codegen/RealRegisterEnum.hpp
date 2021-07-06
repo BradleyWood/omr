@@ -78,6 +78,7 @@
    xmm6                    = 32,
    xmm7                    = 33,
    LastXMMR                = xmm7,
+   LastSSE2XMMReg          = LastXMMR,
 
    AllFPRegisters          = 34,
    ByteReg                 = 35,

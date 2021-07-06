@@ -137,11 +137,13 @@ class OMR_EXTENSIBLE Machine : public OMR::Machine
    int32_t getGlobalReg(TR::RealRegister::RegNum reg);
 
    uint8_t getNumberOfGPRs() { return _numGPRs; }
+   TR::RealRegister::RegNum getNumRegisters();
 
    TR::RealRegister **captureRegisterFile();
    void installRegisterFile(TR::RealRegister **registerFileCopy);
    TR::Register **captureRegisterAssociations();
    TR::list<TR::Register*> *captureSpilledRegistersList();
+   uint32_t maxAssignableXMMRegisters();
 
    void purgeDeadRegistersFromRegisterFile();
    void adjustRegisterUseCountsUp(TR::list<OMR::RegisterUsage *> *rul, bool adjustFuture);
@@ -299,6 +301,9 @@ class OMR_EXTENSIBLE Machine : public OMR::Machine
 
    TR_GlobalRegisterNumber getLastGlobalFPRRegisterNumber()
       {return _numGlobalGPRs + _numGlobalFPRs - 1;}
+
+   TR::RealRegister::RegNum getLastXMMR();
+
 
    TR::RegisterDependencyConditions  *createDepCondForLiveGPRs();
    TR::RegisterDependencyConditions  *createCondForLiveAndSpilledGPRs(TR::list<TR::Register*> *spilledRegisterList = NULL);

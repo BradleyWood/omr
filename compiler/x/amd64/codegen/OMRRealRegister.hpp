@@ -119,44 +119,8 @@ class OMR_EXTENSIBLE RealRegister : public OMR::X86::RealRegister
 
    static RegNum xmmIndex(uint8_t r)
       {
-      switch(r)
-         {
-         case 0:
-            return OMR::RealRegister::xmm0;
-         case 1:
-            return OMR::RealRegister::xmm1;
-         case 2:
-            return OMR::RealRegister::xmm2;
-         case 3:
-            return OMR::RealRegister::xmm3;
-         case 4:
-            return OMR::RealRegister::xmm4;
-         case 5:
-            return OMR::RealRegister::xmm5;
-         case 6:
-            return OMR::RealRegister::xmm6;
-         case 7:
-            return OMR::RealRegister::xmm7;
-         case 8:
-            return OMR::RealRegister::xmm8;
-         case 9:
-            return OMR::RealRegister::xmm9;
-         case 10:
-            return OMR::RealRegister::xmm10;
-         case 11:
-            return OMR::RealRegister::xmm11;
-         case 12:
-            return OMR::RealRegister::xmm12;
-         case 13:
-            return OMR::RealRegister::xmm13;
-         case 14:
-            return OMR::RealRegister::xmm14;
-         case 15:
-            return OMR::RealRegister::xmm15;
-         default:
-            TR_ASSERT(false, "xmmIndex is only valid for registers xmm0 to xmm15");
-            return OMR::RealRegister::NoReg;
-         }
+      TR_ASSERT_FATAL(r >= 0 && r <= 31, "xmm index must range 0-31");
+      return static_cast<RegNum>(OMR::RealRegister::xmm0 + r);
       }
 
    static RegMask gprMask(RegNum idx)
@@ -297,8 +261,40 @@ class OMR_EXTENSIBLE RealRegister : public OMR::X86::RealRegister
             return OMR::RealRegister::xmm14Mask;
          case OMR::RealRegister::xmm15:
             return OMR::RealRegister::xmm15Mask;
+         case OMR::RealRegister::xmm16:
+            return OMR::RealRegister::xmm16Mask;
+         case OMR::RealRegister::xmm17:
+            return OMR::RealRegister::xmm17Mask;
+         case OMR::RealRegister::xmm18:
+            return OMR::RealRegister::xmm18Mask;
+         case OMR::RealRegister::xmm19:
+            return OMR::RealRegister::xmm19Mask;
+         case OMR::RealRegister::xmm20:
+            return OMR::RealRegister::xmm20Mask;
+         case OMR::RealRegister::xmm21:
+            return OMR::RealRegister::xmm21Mask;
+         case OMR::RealRegister::xmm22:
+            return OMR::RealRegister::xmm22Mask;
+         case OMR::RealRegister::xmm23:
+            return OMR::RealRegister::xmm23Mask;
+         case OMR::RealRegister::xmm24:
+            return OMR::RealRegister::xmm24Mask;
+         case OMR::RealRegister::xmm25:
+            return OMR::RealRegister::xmm25Mask;
+         case OMR::RealRegister::xmm26:
+            return OMR::RealRegister::xmm26Mask;
+         case OMR::RealRegister::xmm27:
+            return OMR::RealRegister::xmm27Mask;
+         case OMR::RealRegister::xmm28:
+            return OMR::RealRegister::xmm28Mask;
+         case OMR::RealRegister::xmm29:
+            return OMR::RealRegister::xmm29Mask;
+         case OMR::RealRegister::xmm30:
+            return OMR::RealRegister::xmm30Mask;
+         case OMR::RealRegister::xmm31:
+            return OMR::RealRegister::xmm31Mask;
          default:
-            TR_ASSERT(false, "xmmrMask is only valid for registers xmm0 to xmm15");
+            TR_ASSERT(false, "xmmrMask is only valid for registers xmm0 to xmm31");
             return OMR::RealRegister::noRegMask;
          }
       }
@@ -319,6 +315,59 @@ class OMR_EXTENSIBLE RealRegister : public OMR::X86::RealRegister
    void setRegisterFieldInVEX(uint8_t *opcodeByte)
       {
       *opcodeByte ^= ((_fullRegisterBinaryEncodings[_registerNumber].needsRexForByte << 3) | _fullRegisterBinaryEncodings[_registerNumber].id) << 3; // vvvv is in bits 3-6 of last byte of VEX
+      }
+
+   void setSourceRegisterFieldInEVEX(uint8_t *opcodeByte)
+      {
+      uint8_t regNum = getRegisterNumber() - xmm0;
+      uint8_t bits = 0;
+      *opcodeByte &= 0x9F;
+
+      if (regNum & 0x10)
+         {
+         bits |= 0x4;
+         }
+
+      if (regNum & 0x8)
+         {
+         bits |= 0x2;
+         }
+
+      *opcodeByte |= (~bits & 0x6) << 4;
+      }
+
+   void setSource2ndRegisterFieldInEVEX(uint8_t *opcodeByte)
+      {
+      uint8_t regNum = getRegisterNumber() - xmm0;
+
+      *opcodeByte &= 0x87; // zero out vvvv bits
+      *opcodeByte |= (~(regNum << 3)) & 0x78;
+      uint8_t *evexP1 = opcodeByte + 1;
+      *evexP1 &= 0xf7;
+
+      if (!(regNum & 0x10))
+         {
+         *evexP1 |= 0x8;
+         }
+      }
+
+   void setTargetRegisterFieldInEVEX(uint8_t *opcodeByte)
+      {
+      uint8_t regNum = getRegisterNumber() - xmm0;
+      uint8_t bits = 0;
+      *opcodeByte &= 0x6F;
+
+      if (regNum & 0x10)
+         {
+         bits |= 0x1;
+         }
+
+      if (regNum & 0x8)
+         {
+         bits |= 0x8;
+         }
+
+      *opcodeByte |= (~bits & 0x9) << 4;
       }
 
    void setRegisterFieldInModRM(uint8_t *modRMByte)
