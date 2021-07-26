@@ -3038,6 +3038,11 @@ TR::X86ImmSymInstruction  * generateHelperCallInstruction(TR::Instruction *, TR_
 
 TR::AMD64RegImm64Instruction * generateRegImm64Instruction(TR::InstOpCode::Mnemonic op, TR::Node *node, TR::Register *treg, uint64_t imm, TR::CodeGenerator *cg, int32_t reloKind = TR_NoRelocation);
 
+TR::X86RegMemInstruction * generateAVXorSSERegMemInstruction(TR::InstOpCode::Mnemonic avxOp, TR::InstOpCode::Mnemonic sseOp, TR::Node *node, TR::Register *reg1, TR::MemoryReference *mr, TR::CodeGenerator *cg, bool avxInsnTwoOp = false);
+TR::X86MemRegInstruction * generateAVXorSSEMemRegInstruction(TR::InstOpCode::Mnemonic avxOp, TR::InstOpCode::Mnemonic sseOp, TR::Node *node, TR::MemoryReference *mr, TR::Register *reg1, TR::CodeGenerator *cg);
+TR::X86RegRegImmInstruction * generateAVXorSSERegRegImmInstruction(TR::InstOpCode::Mnemonic avxOp, TR::InstOpCode::Mnemonic sseOp, TR::Node *node, TR::Register *reg1, TR::Register *reg2, int32_t imm, TR::CodeGenerator *cg);
+TR::X86RegRegInstruction *generateAVXorSSERegRegInstruction(TR::InstOpCode::Mnemonic avxOp, TR::InstOpCode::Mnemonic sseOp, TR::Node *node, TR::Register *reg1, TR::Register *reg2, TR::CodeGenerator *cg, bool avxInsnTwoOp = false);
+
 TR::AMD64RegImm64Instruction *
 generateRegImm64Instruction(TR::Instruction   *precedingInstruction,
                             TR::InstOpCode::Mnemonic     op,

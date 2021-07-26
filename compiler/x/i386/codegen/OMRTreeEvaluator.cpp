@@ -5434,9 +5434,9 @@ TR::Register *OMR::X86::I386::TreeEvaluator::performLload(TR::Node *node, TR::Me
             //allocate: highRegister
             highRegister = cg->allocateRegister();
 
-            generateRegRegInstruction(TR::InstOpCode::MOVDReg4Reg, node, lowRegister, xmmReg, cg);
+            generateAVXorSSERegRegInstruction(TR::InstOpCode::VMOVDReg4Reg, TR::InstOpCode::MOVDReg4Reg, node, lowRegister, xmmReg, cg, true);
             generateRegImmInstruction(TR::InstOpCode::PSRLQRegImm1, node, xmmReg, 0x20, cg);
-            generateRegRegInstruction(TR::InstOpCode::MOVDReg4Reg, node, highRegister, xmmReg, cg);
+            generateAVXorSSERegRegInstruction(TR::InstOpCode::VMOVDReg4Reg, TR::InstOpCode::MOVDReg4Reg, node, highRegister, xmmReg, cg, true);
 
             cg->stopUsingRegister(xmmReg);
             }

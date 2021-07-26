@@ -1192,10 +1192,10 @@ TR::Register *OMR::X86::TreeEvaluator::SSE2ArraycmpEvaluator(TR::Node *node, TR:
    cg->stopUsingRegister(s1Reg);
 
    generateLabelInstruction(TR::InstOpCode::label, node, qwordLoop, cg);
-   generateRegMemInstruction(TR::InstOpCode::MOVUPSRegMem, node, xmm2Reg, generateX86MemoryReference(s2Reg, 0, cg), cg);
-   generateRegMemInstruction(TR::InstOpCode::MOVUPSRegMem, node, xmm1Reg, generateX86MemoryReference(s2Reg, deltaReg, 0, cg), cg);
-   generateRegRegInstruction(TR::InstOpCode::PCMPEQBRegReg, node, xmm1Reg, xmm2Reg, cg);
-   generateRegRegInstruction(TR::InstOpCode::PMOVMSKB4RegReg, node, equalTestReg, xmm1Reg, cg);
+   generateAVXorSSERegMemInstruction(TR::InstOpCode::VMOVUPSRegMem, TR::InstOpCode::MOVUPSRegMem, node, xmm2Reg, generateX86MemoryReference(s2Reg, 0, cg), cg, true);
+   generateAVXorSSERegMemInstruction(TR::InstOpCode::VMOVUPSRegMem, TR::InstOpCode::MOVUPSRegMem, node, xmm1Reg, generateX86MemoryReference(s2Reg, deltaReg, 0, cg), cg, true);
+   generateAVXorSSERegRegInstruction(TR::InstOpCode::VPCMPEQBRegRegReg, TR::InstOpCode::PCMPEQBRegReg, node, xmm1Reg, xmm2Reg, cg);
+   generateAVXorSSERegRegInstruction(TR::InstOpCode::VPMOVMSKB4RegReg, TR::InstOpCode::PMOVMSKB4RegReg, node, equalTestReg, xmm1Reg, cg, true);
    generateRegImmInstruction(TR::InstOpCode::CMPRegImm4(), node, equalTestReg, 0xffff, cg);
 
    cg->stopUsingRegister(xmm1Reg);
@@ -1317,10 +1317,10 @@ TR::Register *OMR::X86::TreeEvaluator::SSE2ArraycmpLenEvaluator(TR::Node *node, 
    generateLabelInstruction(TR::InstOpCode::JE4,node, byteStart, cg);
 
    generateLabelInstruction(TR::InstOpCode::label, node, qwordLoop, cg);
-   generateRegMemInstruction(TR::InstOpCode::MOVUPSRegMem, node, xmm1Reg, generateX86MemoryReference(s1Reg, resultReg, 0, cg), cg);
-   generateRegMemInstruction(TR::InstOpCode::MOVUPSRegMem, node, xmm2Reg, generateX86MemoryReference(s2Reg, resultReg, 0, cg), cg);
-   generateRegRegInstruction(TR::InstOpCode::PCMPEQBRegReg, node, xmm1Reg, xmm2Reg, cg);
-   generateRegRegInstruction(TR::InstOpCode::PMOVMSKB4RegReg, node, equalTestReg, xmm1Reg, cg);
+   generateAVXorSSERegMemInstruction(TR::InstOpCode::VMOVUPSRegMem, TR::InstOpCode::MOVUPSRegMem, node, xmm1Reg, generateX86MemoryReference(s1Reg, resultReg, 0, cg), cg, true);
+   generateAVXorSSERegMemInstruction(TR::InstOpCode::VMOVUPSRegMem, TR::InstOpCode::MOVUPSRegMem, node, xmm2Reg, generateX86MemoryReference(s2Reg, resultReg, 0, cg), cg, true);
+   generateAVXorSSERegRegInstruction(TR::InstOpCode::VPCMPEQBRegRegReg, TR::InstOpCode::PCMPEQBRegReg, node, xmm1Reg, xmm2Reg, cg);
+   generateAVXorSSERegRegInstruction(TR::InstOpCode::VPMOVMSKB4RegReg, TR::InstOpCode::PMOVMSKB4RegReg, node, equalTestReg, xmm1Reg, cg, true);
    generateRegImmInstruction(TR::InstOpCode::CMPRegImm4(), node, equalTestReg, 0xffff, cg);
 
    cg->stopUsingRegister(xmm1Reg);
@@ -1683,7 +1683,7 @@ static void arrayCopy64BitPrimitiveOnIA32(TR::Node* node, TR::Register* dstReg, 
    generateRegImmInstruction(TR::InstOpCode::SHRRegImm1(), node, sizeReg, 3, cg);
    generateLabelInstruction(TR::InstOpCode::JRCXZ1, node, endLabel, cg);
    generateLabelInstruction(TR::InstOpCode::label, node, loopLabel, cg);
-   generateRegMemInstruction(TR::InstOpCode::MOVQRegMem, node, XMM, generateX86MemoryReference(srcReg, 0, cg), cg);
+   generateAVXorSSERegMemInstruction(TR::InstOpCode::VMOVQRegMem, TR::InstOpCode::MOVQRegMem, node, XMM, generateX86MemoryReference(srcReg, 0, cg), cg, true);
    generateMemRegInstruction(TR::InstOpCode::MOVQMemReg, node, generateX86MemoryReference(dstReg, srcReg, 0, cg), XMM, cg);
    generateRegMemInstruction(TR::InstOpCode::LEARegMem(), node, srcReg, generateX86MemoryReference(srcReg, scratch, 3, cg), cg);
    generateLabelInstruction(TR::InstOpCode::LOOP1, node, loopLabel, cg);
@@ -2387,16 +2387,16 @@ static void packXMMWithMultipleValues(TR::Node* node, TR::Register* XMMReg, TR::
             };
 
          auto snippet = generateX86MemoryReference(cg->findOrCreate16ByteConstant(node, size==1? MASKOFSIZEONE: MASKOFSIZETWO), cg);
-         generateRegRegInstruction(TR::InstOpCode::MOVQRegReg8, node, XMMReg, sourceReg, cg);
+         generateAVXorSSERegRegInstruction(TR::InstOpCode::VMOVQRegReg8, TR::InstOpCode::MOVQRegReg8, node, XMMReg, sourceReg, cg, true);
          TR::Register* tempReg = cg->allocateRegister(TR_FPR);
-         generateRegMemInstruction(TR::InstOpCode::MOVDQURegMem, node, tempReg, snippet, cg);
+         generateAVXorSSERegMemInstruction(TR::InstOpCode::VMOVDQURegMem, TR::InstOpCode::MOVDQURegMem, node, tempReg, snippet, cg, true);
          generateRegRegInstruction(TR::InstOpCode::PSHUFBRegReg, node, XMMReg, tempReg, cg);
          cg->stopUsingRegister(tempReg);
          break;
          }
       case 4:
       case 8:
-         generateRegRegInstruction(TR::InstOpCode::MOVQRegReg8, node, XMMReg, sourceReg, cg);
+         generateAVXorSSERegRegInstruction(TR::InstOpCode::VMOVQRegReg8, TR::InstOpCode::MOVQRegReg8, node, XMMReg, sourceReg, cg, true);
          generateRegRegImmInstruction(TR::InstOpCode::PSHUFDRegRegImm1, node, XMMReg, XMMReg, size==4? 0x00: 0x44, cg);
          break;
       default:
@@ -2438,7 +2438,7 @@ static void arraySetToZeroForShortConstantArrays(TR::Node* node, TR::Register* a
    else
       {
       tempReg = cg->allocateRegister(TR_FPR);
-      generateRegRegInstruction(TR::InstOpCode::XORPDRegReg, node, tempReg, tempReg, cg);
+      generateAVXorSSERegRegInstruction(TR::InstOpCode::VXORPDRegRegReg, TR::InstOpCode::XORPDRegReg, node, tempReg, tempReg, cg);
       int32_t moves = static_cast<int32_t>(size/16);
       for (int32_t i=0; i<moves; i++)
          {
@@ -2578,12 +2578,12 @@ static void arraySet64BitPrimitiveOnIA32(TR::Node* node, TR::Register* addressRe
    switch (valueReg->getKind())
       {
       case TR_GPR:
-         generateRegRegInstruction(TR::InstOpCode::MOVDRegReg4, node, XMM, valueReg->getHighOrder(), cg);
+         generateAVXorSSERegRegInstruction(TR::InstOpCode::VMOVDRegReg4, TR::InstOpCode::MOVDRegReg4, node, XMM, valueReg->getHighOrder(), cg, true);
          generateRegImmInstruction(TR::InstOpCode::PSLLQRegImm1, node, XMM, 32, cg);
-         generateRegRegInstruction(TR::InstOpCode::MOVDRegReg4, node, XMM, valueReg->getLowOrder(), cg);
+         generateAVXorSSERegRegInstruction(TR::InstOpCode::VMOVDRegReg4, TR::InstOpCode::MOVDRegReg4, node, XMM, valueReg->getLowOrder(), cg, true);
          break;
       case TR_FPR:
-         generateRegRegInstruction(TR::InstOpCode::MOVDQURegReg, node, XMM, valueReg, cg);
+         generateAVXorSSERegRegInstruction(TR::InstOpCode::VMOVDQURegReg, TR::InstOpCode::MOVDQURegReg, node, XMM, valueReg, cg, true);
          break;
       default:
          TR_ASSERT(0, "Arrayset Evaluator: unsupported register type");
@@ -2885,7 +2885,7 @@ static TR::Register * inlineSinglePrecisionSQRT(TR::Node *node, TR::CodeGenerato
       else
    targetRegister = cg->allocateSinglePrecisionRegister(TR_FPR);
 
-      generateRegRegInstruction(TR::InstOpCode::SQRTSSRegReg, node, targetRegister, opRegister, cg);
+      generateAVXorSSERegRegInstruction(TR::InstOpCode::VSQRTSSRegRegReg, TR::InstOpCode::SQRTSSRegReg, node, targetRegister, opRegister, cg);
     }
   else
     {
@@ -4228,7 +4228,7 @@ TR::Register* OMR::X86::TreeEvaluator::FloatingPointAndVectorBinaryArithmeticEva
       }
    else
       {
-      generateRegRegInstruction(TR::InstOpCode::MOVDQURegReg, node, resultReg, operandReg0, cg);
+      generateAVXorSSERegRegInstruction(TR::InstOpCode::VMOVDQURegReg, TR::InstOpCode::MOVDQURegReg, node, resultReg, operandReg0, cg, true);
       generateRegRegInstruction(opCode, node, resultReg, operandReg1, cg);
       }
 

@@ -134,22 +134,22 @@ TR::Register* OMR::X86::TreeEvaluator::SIMDsplatsEvaluator(TR::Node* node, TR::C
    switch (node->getDataType())
       {
       case TR::VectorInt32:
-         generateRegRegInstruction(TR::InstOpCode::MOVDRegReg4, node, resultReg, childReg, cg);
+         generateAVXorSSERegRegInstruction(TR::InstOpCode::VMOVDRegReg4, TR::InstOpCode::MOVDRegReg4, node, resultReg, childReg, cg, true);
          generateRegRegImmInstruction(TR::InstOpCode::PSHUFDRegRegImm1, node, resultReg, resultReg, 0x00, cg); // 00 00 00 00 shuffle xxxA to AAAA
          break;
       case TR::VectorInt64:
          if (cg->comp()->target().is32Bit())
             {
             TR::Register* tempVectorReg = cg->allocateRegister(TR_VRF);
-            generateRegRegInstruction(TR::InstOpCode::MOVDRegReg4, node, tempVectorReg, childReg->getHighOrder(), cg);
+            generateAVXorSSERegRegInstruction(TR::InstOpCode::VMOVDRegReg4, TR::InstOpCode::MOVDRegReg4, node, tempVectorReg, childReg->getHighOrder(), cg, true);
             generateRegImmInstruction(TR::InstOpCode::PSLLQRegImm1, node, tempVectorReg, 0x20, cg);
-            generateRegRegInstruction(TR::InstOpCode::MOVDRegReg4, node, resultReg, childReg->getLowOrder(), cg);
+            generateAVXorSSERegRegInstruction(TR::InstOpCode::VMOVDRegReg4, TR::InstOpCode::MOVDRegReg4, node, resultReg, childReg->getLowOrder(), cg, true);
             generateRegRegInstruction(TR::InstOpCode::PORRegReg, node, resultReg, tempVectorReg, cg);
             cg->stopUsingRegister(tempVectorReg);
             }
          else
             {
-            generateRegRegInstruction(TR::InstOpCode::MOVQRegReg8, node, resultReg, childReg, cg);
+            generateAVXorSSERegRegInstruction(TR::InstOpCode::VMOVQRegReg8, TR::InstOpCode::MOVQRegReg8, node, resultReg, childReg, cg, true);
             }
          generateRegRegImmInstruction(TR::InstOpCode::PSHUFDRegRegImm1, node, resultReg, resultReg, 0x44, cg); // 01 00 01 00 shuffle xxBA to BABA
          break;
@@ -256,7 +256,7 @@ TR::Register* OMR::X86::TreeEvaluator::SIMDgetvelemEvaluator(TR::Node* node, TR:
           */
          if (3 == elem)
             {
-            generateRegRegInstruction(TR::InstOpCode::MOVDQURegReg, node, dstReg, srcVectorReg, cg);
+            generateAVXorSSERegRegInstruction(TR::InstOpCode::VMOVDQURegReg, TR::InstOpCode::MOVDQURegReg, node, dstReg, srcVectorReg, cg, true);
             }
          else
             {
@@ -265,7 +265,7 @@ TR::Register* OMR::X86::TreeEvaluator::SIMDgetvelemEvaluator(TR::Node* node, TR:
 
          if (TR::VectorInt32 == firstChild->getDataType())
             {
-            generateRegRegInstruction(TR::InstOpCode::MOVDReg4Reg, node, resReg, dstReg, cg);
+            generateAVXorSSERegRegInstruction(TR::InstOpCode::VMOVDReg4Reg, TR::InstOpCode::MOVDReg4Reg, node, resReg, dstReg, cg, true);
             cg->stopUsingRegister(dstReg);
             }
          }
@@ -293,7 +293,7 @@ TR::Register* OMR::X86::TreeEvaluator::SIMDgetvelemEvaluator(TR::Node* node, TR:
           */
          if (1 == elem)
             {
-            generateRegRegInstruction(TR::InstOpCode::MOVDQURegReg, node, dstReg, srcVectorReg, cg);
+            generateAVXorSSERegRegInstruction(TR::InstOpCode::VMOVDQURegReg, TR::InstOpCode::MOVDQURegReg, node, dstReg, srcVectorReg, cg, true);
             }
          else //0 == elem
             {
@@ -304,13 +304,13 @@ TR::Register* OMR::X86::TreeEvaluator::SIMDgetvelemEvaluator(TR::Node* node, TR:
             {
             if (cg->comp()->target().is32Bit())
                {
-               generateRegRegInstruction(TR::InstOpCode::MOVDReg4Reg, node, lowResReg, dstReg, cg);
+               generateAVXorSSERegRegInstruction(TR::InstOpCode::VMOVDReg4Reg, TR::InstOpCode::MOVDReg4Reg, node, lowResReg, dstReg, cg, true);
                generateRegRegImmInstruction(TR::InstOpCode::PSHUFDRegRegImm1, node, dstReg, srcVectorReg, (0 == elem) ? 0x03 : 0x01, cg);
-               generateRegRegInstruction(TR::InstOpCode::MOVDReg4Reg, node, highResReg, dstReg, cg);
+               generateAVXorSSERegRegInstruction(TR::InstOpCode::VMOVDReg4Reg, TR::InstOpCode::MOVDReg4Reg, node, highResReg, dstReg, cg, true);
                }
             else
                {
-               generateRegRegInstruction(TR::InstOpCode::MOVQReg8Reg, node, resReg, dstReg, cg);
+               generateAVXorSSERegRegInstruction(TR::InstOpCode::VMOVQReg8Reg, TR::InstOpCode::MOVQReg8Reg, node, resReg, dstReg, cg, true);
                }
             cg->stopUsingRegister(dstReg);
             }

@@ -2804,7 +2804,7 @@ TR::Register *OMR::X86::AMD64::TreeEvaluator::lbits2dEvaluator(TR::Node *node, T
    TR::Node      *child  = node->getFirstChild();
    TR::Register  *sreg   = cg->evaluate(child);
    TR::Register  *treg   = cg->allocateRegister(TR_FPR);
-   generateRegRegInstruction(TR::InstOpCode::MOVQRegReg8, node, treg, sreg, cg);
+   generateAVXorSSERegRegInstruction(TR::InstOpCode::VMOVQRegReg8, TR::InstOpCode::MOVQRegReg8, node, treg, sreg, cg, true);
    node->setRegister(treg);
    cg->decReferenceCount(child);
    return treg;
@@ -2816,7 +2816,7 @@ TR::Register *OMR::X86::AMD64::TreeEvaluator::dbits2lEvaluator(TR::Node *node, T
    TR::Node      *child  = node->getFirstChild();
    TR::Register  *sreg   = cg->evaluate(child);
    TR::Register  *treg   = cg->allocateRegister(TR_GPR);
-   generateRegRegInstruction(TR::InstOpCode::MOVQReg8Reg, node, treg, sreg, cg);
+   generateAVXorSSERegRegInstruction(TR::InstOpCode::VMOVQReg8Reg, TR::InstOpCode::MOVQReg8Reg, node, treg, sreg, cg, true);
    if (node->normalizeNanValues())
       {
       static char *disableFastNormalizeNaNs = feGetEnv("TR_disableFastNormalizeNaNs");

@@ -695,9 +695,9 @@ void OMR::X86::Linkage::coerceFPReturnValueToXMMR(TR::Node                      
 
    if (callNode->getOpCode().isFloat())
       {
-   TR::MemoryReference  *tempMR = self()->machine()->getDummyLocalMR(TR::Float);
+      TR::MemoryReference  *tempMR = self()->machine()->getDummyLocalMR(TR::Float);
       generateFPMemRegInstruction(TR::InstOpCode::FSTPMemReg, callNode, tempMR, fpReg, self()->cg());
-      generateRegMemInstruction(TR::InstOpCode::MOVSSRegMem, callNode, returnReg, generateX86MemoryReference(*tempMR, 0, self()->cg()), self()->cg());
+      generateAVXorSSERegMemInstruction(TR::InstOpCode::VMOVSSRegMem, TR::InstOpCode::MOVSSRegMem, callNode, returnReg, generateX86MemoryReference(*tempMR, 0, self()->cg()), self()->cg(), true);
       }
    else
       {

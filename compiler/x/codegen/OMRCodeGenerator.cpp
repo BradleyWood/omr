@@ -2078,7 +2078,7 @@ TR::Register *OMR::X86::CodeGenerator::floatClobberEvaluate(TR::Node * node)
          targetRegister->setMayNeedPrecisionAdjustment();
 
       if (temp->getKind() == TR_FPR)
-         generateRegRegInstruction(TR::InstOpCode::MOVAPSRegReg, node, targetRegister, temp, self());
+         generateAVXorSSERegRegInstruction(TR::InstOpCode::VMOVAPSRegReg, TR::InstOpCode::MOVAPSRegReg, node, targetRegister, temp, self(), true);
       else
          generateFPST0STiRegRegInstruction(TR::InstOpCode::FLDRegReg, node, targetRegister, temp, self());
 
@@ -2105,7 +2105,7 @@ TR::Register *OMR::X86::CodeGenerator::doubleClobberEvaluate(TR::Node * node)
          targetRegister->setMayNeedPrecisionAdjustment();
 
       if (temp->getKind() == TR_FPR)
-         generateRegRegInstruction(TR::InstOpCode::MOVAPDRegReg, node, targetRegister, temp, self());
+         generateAVXorSSERegRegInstruction(TR::InstOpCode::VMOVAPDRegReg, TR::InstOpCode::MOVAPDRegReg, node, targetRegister, temp, self(), true);
       else
          generateFPST0STiRegRegInstruction(TR::InstOpCode::DLDRegReg, node, targetRegister, temp, self());
 

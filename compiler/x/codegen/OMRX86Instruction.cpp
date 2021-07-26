@@ -4878,3 +4878,60 @@ generateImm64SymInstruction(TR::Instruction                      *precedingInstr
    {
    return new (cg->trHeapMemory()) TR::AMD64Imm64SymInstruction(precedingInstruction, op, imm, sr, cond, cg);
    }
+
+TR::X86RegMemInstruction *
+generateAVXorSSERegMemInstruction(TR::InstOpCode::Mnemonic avxOp, TR::InstOpCode::Mnemonic sseOp, TR::Node *node,
+                                  TR::Register *reg1, TR::MemoryReference *mr, TR::CodeGenerator *cg, bool avxInsnTwoOp)
+   {
+   if (cg->comp()->target().cpu.supportsAVX())
+      {
+      if (avxInsnTwoOp)
+         {
+            return generateRegMemInstruction(avxOp, node, reg1, mr, cg);
+         }
+      return generateRegRegMemInstruction(avxOp, node, reg1, reg1, mr, cg);
+      }
+   else
+      {
+      return generateRegMemInstruction(sseOp, node, reg1, mr, cg);
+      }
+   }
+
+TR::X86RegRegInstruction *
+generateAVXorSSERegRegInstruction(TR::InstOpCode::Mnemonic avxOp, TR::InstOpCode::Mnemonic sseOp, TR::Node *node,
+                                  TR::Register *reg1, TR::Register *reg2, TR::CodeGenerator *cg, bool avxInsnTwoOp)
+   {
+   if (cg->comp()->target().cpu.supportsAVX())
+      {
+      if (avxInsnTwoOp)
+      {
+         return generateRegRegInstruction(avxOp, node, reg1, reg2, cg);
+      }
+      return generateRegRegRegInstruction(avxOp, node, reg1, reg1, reg2, cg);
+      }
+   else
+      {
+      return generateRegRegInstruction(sseOp, node, reg1, reg2, cg);
+      }
+   }
+
+TR::X86MemRegInstruction *
+generateAVXorSSEMemRegInstruction(TR::InstOpCode::Mnemonic avxOp, TR::InstOpCode::Mnemonic sseOp, TR::Node *node,
+                                  TR::MemoryReference *mr, TR::Register *reg1, TR::CodeGenerator *cg)
+   {
+   return generateMemRegInstruction(cg->comp()->target().cpu.supportsAVX() ? avxOp : sseOp, node, mr, reg1, cg);
+   }
+
+TR::X86RegRegImmInstruction *
+generateAVXorSSERegRegImmInstruction(TR::InstOpCode::Mnemonic avxOp, TR::InstOpCode::Mnemonic sseOp, TR::Node *node,
+                                     TR::Register *reg1, TR::Register *reg2, int32_t imm, TR::CodeGenerator *cg)
+   {
+   if (cg->comp()->target().cpu.supportsAVX())
+      {
+      return generateRegRegImmInstruction(avxOp, node, reg1, reg2, imm, cg);
+      }
+   else
+      {
+      return generateRegRegImmInstruction(sseOp, node, reg1, reg2, imm, cg);
+      }
+   }

@@ -224,19 +224,19 @@ OMR::X86::RegisterDependencyConditions::RegisterDependencyConditions(
             if (globalReg->isSinglePrecision())
                {
                copyReg = cg->allocateSinglePrecisionRegister(TR_FPR);
-               generateRegRegInstruction(TR::InstOpCode::MOVAPSRegReg, node, copyReg, child->getRegister(), cg);
+               generateAVXorSSERegRegInstruction(TR::InstOpCode::VMOVAPSRegReg, TR::InstOpCode::MOVAPSRegReg, node, copyReg, child->getRegister(), cg, true);
                }
             else
                {
                copyReg = cg->allocateRegister(TR_FPR);
-               generateRegRegInstruction(TR::InstOpCode::MOVAPDRegReg, node, copyReg, child->getRegister(), cg);
+               generateAVXorSSERegRegInstruction(TR::InstOpCode::VMOVAPDRegReg, TR::InstOpCode::MOVAPDRegReg, node, copyReg, child->getRegister(), cg, true);
                }
             }
          else if (globalReg->getKind() == TR_VRF)
             {
             generateRegcopyDebugCounter(cg, "vrf");
             copyReg = cg->allocateRegister(TR_VRF);
-            generateRegRegInstruction(TR::InstOpCode::MOVDQURegReg, node, copyReg, child->getRegister(), cg);
+            generateAVXorSSERegRegInstruction(TR::InstOpCode::VMOVDQURegReg, TR::InstOpCode::MOVDQURegReg, node, copyReg, child->getRegister(), cg, true);
             }
 
          globalReg = copyReg;
