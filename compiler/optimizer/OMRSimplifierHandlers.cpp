@@ -5352,15 +5352,8 @@ static bool isOperationFPCompliant(TR::Node *parent,TR::Node *arithExprNode, TR:
    bool loadConstIsPowerOfTwoFloat = (mulConstChild->getDataType() == TR::Float) &&
                 isNZFloatPowerOfTwo(mulConstChild->getFloat());
 
-   bool isStrictfp =  s->comp()->getCurrentMethod()->isStrictFP() || s->comp()->getOption(TR_StrictFP);
-
-
-   if ((loadConstIsPowerOfTwoDbl || loadConstIsPowerOfTwoFloat) && !isStrictfp)
-      return true;
-   else if (traceIt)
-      traceMsg(s->comp(), "Fails because not power of 2 or !strict\n",mulConstChild);
-
    if (traceIt) traceMsg(s->comp(), "Fails because strict, no const or bitcount exceeded\n");
+
    return false;
    }
 
