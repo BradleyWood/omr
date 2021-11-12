@@ -38,7 +38,7 @@ OMR::X86::AMD64::Machine::Machine(TR::CodeGenerator *cg)
       _registerAssociationsStorage,
       TR::Machine::enableNewPickRegister()? (AMD64_MAX_GLOBAL_GPRS      - TR::Machine::numGPRRegsWithheld(cg)) : 8,
       TR::Machine::enableNewPickRegister()? (AMD64_MAX_8BIT_GLOBAL_GPRS - TR::Machine::numRegsWithheld(cg)) : 8,
-      TR::Machine::enableNewPickRegister()? (AMD64_MAX_GLOBAL_FPRS      - TR::Machine::numRegsWithheld(cg)) : 8,
+      TR::Machine::enableNewPickRegister()? (AMD64_MAX_GLOBAL_FPRS      - TR::Machine::numRegsWithheld(cg) - (cg->comp()->target().cpu.supportsFeature(OMR_FEATURE_X86_AVX512F) ? 0 : 16)) : 8,
       _xmmGlobalRegisterStorage,
       _globalRegisterNumberToRealRegisterMapStorage
       )
