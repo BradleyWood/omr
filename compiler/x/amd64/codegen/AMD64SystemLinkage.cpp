@@ -262,6 +262,26 @@ TR::AMD64Win64FastCallLinkage::AMD64Win64FastCallLinkage(TR::CodeGenerator *cg)
    _properties._allocationOrder[p++] = TR::RealRegister::xmm14;
    _properties._allocationOrder[p++] = TR::RealRegister::xmm15;
 
+   if (cg->comp()->target().cpu.supportsFeature(OMR_FEATURE_X86_AVX512F))
+      {
+      _properties._allocationOrder[p++] = TR::RealRegister::xmm16;
+      _properties._allocationOrder[p++] = TR::RealRegister::xmm17;
+      _properties._allocationOrder[p++] = TR::RealRegister::xmm18;
+      _properties._allocationOrder[p++] = TR::RealRegister::xmm19;
+      _properties._allocationOrder[p++] = TR::RealRegister::xmm20;
+      _properties._allocationOrder[p++] = TR::RealRegister::xmm21;
+      _properties._allocationOrder[p++] = TR::RealRegister::xmm22;
+      _properties._allocationOrder[p++] = TR::RealRegister::xmm23;
+      _properties._allocationOrder[p++] = TR::RealRegister::xmm24;
+      _properties._allocationOrder[p++] = TR::RealRegister::xmm25;
+      _properties._allocationOrder[p++] = TR::RealRegister::xmm26;
+      _properties._allocationOrder[p++] = TR::RealRegister::xmm27;
+      _properties._allocationOrder[p++] = TR::RealRegister::xmm28;
+      _properties._allocationOrder[p++] = TR::RealRegister::xmm29;
+      _properties._allocationOrder[p++] = TR::RealRegister::xmm30;
+      _properties._allocationOrder[p++] = TR::RealRegister::xmm31;
+      }
+
    _properties._OutgoingArgAlignment = AMD64_DEFAULT_STACK_ALIGNMENT;
 
    TR_ASSERT(p == (machine()->getNumGlobalGPRs() + machine()->_numGlobalFPRs), "assertion failure");
@@ -455,6 +475,26 @@ TR::AMD64ABILinkage::AMD64ABILinkage(TR::CodeGenerator *cg)
    _properties._allocationOrder[p++] = TR::RealRegister::xmm13;
    _properties._allocationOrder[p++] = TR::RealRegister::xmm14;
    _properties._allocationOrder[p++] = TR::RealRegister::xmm15;
+
+   if (cg->comp()->target().cpu.supportsFeature(OMR_FEATURE_X86_AVX512F))
+      {
+      _properties._allocationOrder[p++] = TR::RealRegister::xmm16;
+      _properties._allocationOrder[p++] = TR::RealRegister::xmm17;
+      _properties._allocationOrder[p++] = TR::RealRegister::xmm18;
+      _properties._allocationOrder[p++] = TR::RealRegister::xmm19;
+      _properties._allocationOrder[p++] = TR::RealRegister::xmm20;
+      _properties._allocationOrder[p++] = TR::RealRegister::xmm21;
+      _properties._allocationOrder[p++] = TR::RealRegister::xmm22;
+      _properties._allocationOrder[p++] = TR::RealRegister::xmm23;
+      _properties._allocationOrder[p++] = TR::RealRegister::xmm24;
+      _properties._allocationOrder[p++] = TR::RealRegister::xmm25;
+      _properties._allocationOrder[p++] = TR::RealRegister::xmm26;
+      _properties._allocationOrder[p++] = TR::RealRegister::xmm27;
+      _properties._allocationOrder[p++] = TR::RealRegister::xmm28;
+      _properties._allocationOrder[p++] = TR::RealRegister::xmm29;
+      _properties._allocationOrder[p++] = TR::RealRegister::xmm30;
+      _properties._allocationOrder[p++] = TR::RealRegister::xmm31;
+      }
 
    _properties.setOutgoingArgAlignment(AMD64_DEFAULT_STACK_ALIGNMENT);
 
