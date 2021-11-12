@@ -57,10 +57,10 @@ class OMR_EXTENSIBLE Machine : public OMR::X86::Machine
       {
       AMD64_NUM_GPR              = 16,
       AMD64_NUM_FPR              = 8,  // x87 registers
-      AMD64_NUM_XMMR             = 16,
+      AMD64_NUM_XMMR             = 32,
       AMD64_MAX_GLOBAL_GPRS      = 14,
       AMD64_MAX_8BIT_GLOBAL_GPRS = AMD64_MAX_GLOBAL_GPRS,
-      AMD64_MAX_GLOBAL_FPRS      = 16,
+      AMD64_MAX_GLOBAL_FPRS      = 32,
       };
 
    TR::Register         *_registerAssociationsStorage[TR::RealRegister::NumRegisters];
