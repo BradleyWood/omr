@@ -158,6 +158,7 @@ class OMR_EXTENSIBLE Instruction : public OMR::Instruction
    virtual TR::Register *getTargetRegister() { return NULL; }
    virtual TR::Register *getSourceRegister() { return NULL; }
    virtual TR::Register *getSource2ndRegister() { return NULL; }
+   virtual TR::Register *getMaskRegister() { return NULL; }
    virtual TR::MemoryReference *getMemoryReference() { return NULL; }
 
    int32_t getMaxPatchableInstructionLength() { return 10; }

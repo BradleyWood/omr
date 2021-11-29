@@ -1043,7 +1043,9 @@ public:
    TR::RegisterIterator *setGPRegisterIterator(TR::RegisterIterator *iter) {return (_gpRegisterIterator = iter);}
 
    TR::RegisterIterator *getFPRegisterIterator() {return _fpRegisterIterator;}
+   TR::RegisterIterator *getVMRegisterIterator() {return _vmRegisterIterator;}
    TR::RegisterIterator *setFPRegisterIterator(TR::RegisterIterator *iter) {return (_fpRegisterIterator = iter);}
+   TR::RegisterIterator *setVMRRegisterIterator(TR::RegisterIterator *iter) {return (_vmRegisterIterator = iter);}
 
    // X86 only
    uint32_t estimateBinaryLength(TR::MemoryReference *) { return 0; }
@@ -2023,6 +2025,7 @@ public:
 
    TR::RegisterIterator *_gpRegisterIterator;
    TR::RegisterIterator *_fpRegisterIterator;
+   TR::RegisterIterator *_vmRegisterIterator;
    TR_RegisterAssignmentFlags _regAssignFlags;
 
    uint32_t _preJitMethodEntrySize;

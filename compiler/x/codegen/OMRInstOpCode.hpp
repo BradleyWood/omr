@@ -90,6 +90,7 @@ namespace TR { class Register; }
 #define IA32OpProp1_SetsCCForCompare          0x00000010
 #define IA32OpProp1_SetsCCForTest             0x00000020
 #define IA32OpProp1_SupportsLockPrefix        0x00000040
+#define IA32OpProp1_VectorByteMask            0x00000080
 #define IA32OpProp1_DoubleWordSource          0x00000100
 #define IA32OpProp1_DoubleWordTarget          0x00000200
 #define IA32OpProp1_XMMSource                 0x00000400
@@ -97,6 +98,7 @@ namespace TR { class Register; }
 #define IA32OpProp1_PseudoOp                  0x00001000
 #define IA32OpProp1_NeedsRepPrefix            0x00002000
 #define IA32OpProp1_NeedsLockPrefix           0x00004000
+#define IA32OpProp1_VectorShortMask           0x00008000
 #define IA32OpProp1_CallOp                    0x00010000
 #define IA32OpProp1_SourceIsMemRef            0x00020000
 #define IA32OpProp1_SourceRegIsImplicit       0x00040000
@@ -399,6 +401,10 @@ class InstOpCode: public OMR::InstOpCode
    inline uint32_t targetRegIsImplicit()           const { return _properties1[_mnemonic] & IA32OpProp1_TargetRegIsImplicit;}
    inline uint32_t sourceRegIsImplicit()           const { return _properties1[_mnemonic] & IA32OpProp1_SourceRegIsImplicit;}
    inline uint32_t isFusableCompare()              const { return _properties1[_mnemonic] & IA32OpProp1_FusableCompare; }
+   inline uint32_t isMaskedByteOp()                const { return _properties1[_mnemonic] & IA32OpProp1_VectorByteMask; }
+   inline uint32_t isMaskedShortOp()               const { return _properties1[_mnemonic] & IA32OpProp1_VectorShortMask; }
+   inline uint32_t isMaskedIntOp()                 const { return _properties1[_mnemonic] & IA32OpProp1_VectorIntMask; }
+   inline uint32_t isMaskedLong()                  const { return _properties1[_mnemonic] & IA32OpProp1_VectorLongMask; }
    inline bool     isEvexInstruction()             const { return _binaries[_mnemonic].vex_l >> 2 == 1; }
 
    inline bool isSetRegInstruction() const

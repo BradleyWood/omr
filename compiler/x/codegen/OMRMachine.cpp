@@ -241,7 +241,7 @@ OMR::X86::Machine::findBestFreeGPRegister(TR::Instruction   *currentInstruction,
       } candidates[16]; // TODO:AMD64: Should be max number of regs of any one kind
    int32_t      numCandidates = 0;
 
-   TR_ASSERT( (virtReg && (virtReg->getKind() == TR_GPR || virtReg->getKind() == TR_FPR || virtReg->getKind() == TR_VRF)),
+   TR_ASSERT_FATAL((virtReg && (virtReg->getKind() == TR_GPR || virtReg->getKind() == TR_FPR || virtReg->getKind() == TR_VRF || virtReg->getKind() == TR_VMR)),
            "OMR::X86::Machine::findBestFreeGPRegister() ==> Unexpected register kind!" );
 
    bool useRegisterAssociations = self()->cg()->enableRegisterAssociations() ? true : false;
@@ -288,6 +288,13 @@ OMR::X86::Machine::findBestFreeGPRegister(TR::Instruction   *currentInstruction,
          break;
       default:
          TR_ASSERT(0, "unknown register size requested\n");
+      }
+
+   if (virtReg->getKind() == TR_VMR)
+      {
+      TR_ASSERT_FATAL(cg()->comp()->target().cpu.supportsFeature(OMR_FEATURE_X86_AVX512F), "Cannot assign mask register on unsupported CPU");
+      first = TR::RealRegister::k1;
+      last = TR::RealRegister::k7;
       }
 
    uint32_t                        weight;
@@ -444,10 +451,11 @@ TR::RealRegister *OMR::X86::Machine::freeBestGPRegister(TR::Instruction         
    TR::Compilation *comp = self()->cg()->comp();
 
    bool useRegisterInterferences = self()->cg()->enableRegisterInterferences() ? true : false;
-   bool enableRematerialisation = self()->cg()->enableRematerialisation() ? true : false;
+   bool enableRematerialisation = self()->cg()->enableRematerialisation() && virtReg->getKind() != TR_VMR;
+   // rematerialisation not supported for vector masks
 
-   TR_ASSERT(virtReg && (virtReg->getKind() == TR_GPR || virtReg->getKind() == TR_FPR || virtReg->getKind() == TR_VRF),
-          "OMR::X86::Machine::freeBestGPRegister() ==> expecting to free GPRs or XMMRs only!");
+   TR_ASSERT_FATAL(virtReg && (virtReg->getKind() == TR_GPR || virtReg->getKind() == TR_FPR || virtReg->getKind() == TR_VRF || virtReg->getKind() == TR_VMR),
+          "OMR::X86::Machine::freeBestGPRegister() ==> expecting to free GPRs, VMRS or XMMRs only!");
 
    switch (requestedRegSize)
       {
@@ -472,7 +480,16 @@ TR::RealRegister *OMR::X86::Machine::freeBestGPRegister(TR::Instruction         
          last  = currentInstruction->getOpCode().info().isEvex() ? getLastXMMR() : TR::RealRegister::LastSSE2XMMReg;
          break;
       default:
-         TR_ASSERT(0, "unknown register size requested\n");
+         TR_ASSERT_FATAL(0, "unknown register size requested\n");
+      }
+
+   TR::InstOpCode::Mnemonic vmrSpillOpcode;
+   int32_t vmrStoreSize;
+
+   if (virtReg->getKind() == TR_VMR)
+      {
+      first = TR::RealRegister::k1;
+      last = TR::RealRegister::k7;
       }
 
    char *bestRegisterTypes[NumBestRegisters] =
@@ -535,7 +552,7 @@ TR::RealRegister *OMR::X86::Machine::freeBestGPRegister(TR::Instruction         
       // such a case, where our virtual need not be in a register across the dependency, choose the
       // virtual itself as a spill candidate.
       //
-      TR_ASSERT(considerVirtAsSpillCandidate,
+      TR_ASSERT_FATAL(considerVirtAsSpillCandidate,
               "freeBestGPRegister(): could not find any GPR spill candidates for %s\n", self()->getDebug()->getName(virtReg));
 
       bestRegister = virtReg;
@@ -765,6 +782,48 @@ TR::RealRegister *OMR::X86::Machine::freeBestGPRegister(TR::Instruction         
    TR::RealRegister         *best = toRealRegister(bestRegister->getAssignedRegister());
    TR::Instruction             *instr = NULL;
 
+   if (virtReg->getKind() == TR_VMR)
+      {
+      TR::Instruction *cursor = currentInstruction;
+
+      while ((cursor = cursor->getNext()) != NULL)
+         {
+         // search for the next instruction that uses this register and
+         // determine the spilling opcode based on how many lanes it uses
+         if (cursor->getMaskRegister() == best)
+            {
+            TR::InstOpCode nextUseOpcode = cursor->getOpCode();
+
+            if (nextUseOpcode.isMaskedByteOp())
+               {
+               vmrSpillOpcode = TR::InstOpCode::KMOVBMaskMem;
+               vmrStoreSize = 1;
+               }
+            else if (nextUseOpcode.isMaskedShortOp())
+               {
+               vmrSpillOpcode = TR::InstOpCode::KMOVWMaskMem;
+               vmrStoreSize = 2;
+               }
+            else if (nextUseOpcode.isMaskedIntOp())
+               {
+               vmrSpillOpcode = TR::InstOpCode::KMOVDMaskMem;
+               vmrStoreSize = 4;
+               }
+            else if (nextUseOpcode.isMaskedLong())
+               {
+               vmrSpillOpcode = TR::InstOpCode::KMOVQMaskMem;
+               vmrStoreSize = 8;
+               }
+            else
+               {
+               TR_ASSERT_FATAL(false, "Unknown mask register size for opcode");
+               }
+
+            break;
+            }
+         }
+      }
+
    if (enableRematerialisation && bestDiscardableRegister)
       {
       TR_RematerializationInfo *info = bestDiscardableRegister->getRematerializationInfo();
@@ -868,6 +927,20 @@ TR::RealRegister *OMR::X86::Machine::freeBestGPRegister(TR::Instruction         
             location = self()->cg()->allocateSpill(16, false, &offset);
             }
          }
+      else if ((bestRegister->getKind() == TR_VMR))
+         {
+         if (bestRegister->getBackingStorage())
+            {
+            // If there is backing storage associated with a register, it means the
+            // backing store wasn't returned to the free list and it can be used.
+            //
+            location = bestRegister->getBackingStorage();
+            }
+         else
+            {
+            location = self()->cg()->allocateSpill(vmrStoreSize, false, &offset);
+            }
+         }
       else
          {
          if (containsInternalPointer)
@@ -936,6 +1009,11 @@ TR::RealRegister *OMR::X86::Machine::freeBestGPRegister(TR::Instruction         
          {
          op = TR::InstOpCode::MOVDQURegMem;
          }
+      else if (bestRegister->getKind() == TR_VMR)
+         {
+         TR_ASSERT_FATAL(vmrSpillOpcode, "Failed to find next mask reg use");
+         op = vmrSpillOpcode;
+         }
       else
          {
          op = TR::InstOpCode::LRegMem();
@@ -965,6 +1043,7 @@ TR::RealRegister *OMR::X86::Machine::reverseGPRSpillState(TR::Instruction     *c
                                                         TR_RegisterSizes    requestedRegSize)
    {
    TR::Compilation *comp = self()->cg()->comp();
+
    if (targetRegister == NULL)
       {
       targetRegister = self()->findBestFreeGPRegister(currentInstruction, spilledRegister, requestedRegSize);
@@ -1001,7 +1080,7 @@ TR::RealRegister *OMR::X86::Machine::reverseGPRSpillState(TR::Instruction     *c
 
    self()->cg()->getSpilledIntRegisters().remove(spilledRegister);
 
-   if (self()->cg()->enableRematerialisation())
+   if (self()->cg()->enableRematerialisation() && spilledRegister->getKind() != TR_VMR)
       {
       self()->cg()->reactivateDependentDiscardableRegisters(spilledRegister);
 
@@ -1039,10 +1118,6 @@ TR::RealRegister *OMR::X86::Machine::reverseGPRSpillState(TR::Instruction     *c
       // while assigning non-linear control flow regions.
       //
       self()->cg()->freeSpill(location, spilledRegister->isSinglePrecision()? 4:8, spilledRegister->isSpilledToSecondHalf()? 4:0);
-      if (!self()->cg()->isFreeSpillListLocked())
-         {
-         spilledRegister->setBackingStorage(NULL);
-         }
       }
    else if (spilledRegister->getKind() == TR_VRF)
       {
@@ -1058,10 +1133,51 @@ TR::RealRegister *OMR::X86::Machine::reverseGPRSpillState(TR::Instruction     *c
       // while assigning non-linear control flow regions.
       //
       self()->cg()->freeSpill(location, 16, 0);
-      if (!self()->cg()->isFreeSpillListLocked())
+      }
+   else if (spilledRegister->getKind() == TR_VMR)
+      {
+      TR::InstOpCode::Mnemonic opcode;
+      int32_t storeSize;
+
+      TR::InstOpCode currentOpcode = currentInstruction->getOpCode();
+
+      if (currentOpcode.isMaskedByteOp())
          {
-         spilledRegister->setBackingStorage(NULL);
+         opcode = TR::InstOpCode::KMOVBMemMask;
+         storeSize = 1;
          }
+      else if (currentOpcode.isMaskedShortOp())
+         {
+         opcode = TR::InstOpCode::KMOVWMemMask;
+         storeSize = 2;
+         }
+      else if (currentOpcode.isMaskedIntOp())
+         {
+         opcode = TR::InstOpCode::KMOVDMemMask;
+         storeSize = 4;
+         }
+      else if (currentOpcode.isMaskedLong())
+         {
+         opcode = TR::InstOpCode::KMOVQMemMask;
+         storeSize = 8;
+         }
+      else
+         {
+         TR_ASSERT_FATAL(false, "Unknown mask register size for opcode");
+         }
+
+      instr = new (self()->cg()->trHeapMemory())
+            TR::X86MemRegInstruction(
+            currentInstruction,
+            opcode,
+            tempMR,
+            targetRegister, self()->cg());
+
+      // Do not add a freed spill slot back onto the free list if the list is locked.
+      // This is to enforce re-use of the same spill slot for a virtual register
+      // while assigning non-linear control flow regions.
+      //
+      self()->cg()->freeSpill(location, storeSize, 0);
       }
    else
       {
@@ -1076,10 +1192,11 @@ TR::RealRegister *OMR::X86::Machine::reverseGPRSpillState(TR::Instruction     *c
       // while assigning non-linear control flow regions.
       //
       self()->cg()->freeSpill(location, static_cast<int32_t>(TR::Compiler->om.sizeofReferenceAddress()), spilledRegister->isSpilledToSecondHalf()? 4:0);
-      if (!self()->cg()->isFreeSpillListLocked())
-         {
-         spilledRegister->setBackingStorage(NULL);
-         }
+      }
+
+   if (!self()->cg()->isFreeSpillListLocked())
+      {
+      spilledRegister->setBackingStorage(NULL);
       }
 
    self()->cg()->traceRAInstruction(instr);
@@ -1087,7 +1204,7 @@ TR::RealRegister *OMR::X86::Machine::reverseGPRSpillState(TR::Instruction     *c
    return targetRegister;
    }
 
-void OMR::X86::Machine::coerceGPRegisterAssignment(TR::Instruction          *currentInstruction,
+void OMR::X86::Machine::coerceGPRegisterAssignment(TR::Instruction      *currentInstruction,
                                                TR::Register             *virtualRegister,
                                                TR::RealRegister::RegNum  registerNumber,
                                                bool                     coerceToSatisfyRegDeps)
@@ -1095,6 +1212,23 @@ void OMR::X86::Machine::coerceGPRegisterAssignment(TR::Instruction          *cur
    TR::RealRegister *targetRegister          = _registerFile[registerNumber];
    TR::RealRegister    *currentAssignedRegister = virtualRegister->getAssignedRealRegister();
    TR::Instruction     *instr                   = NULL;
+
+   TR::InstOpCode::Mnemonic movOpcode = TR::InstOpCode::MOVRegReg();
+
+   if (virtualRegister->getKind() == TR_VMR)
+      {
+      TR::InstOpCode currentOpcode = currentInstruction->getOpCode();
+      if (currentOpcode.isMaskedByteOp())
+         movOpcode = TR::InstOpCode::KMOVBMaskMask;
+      else if (currentOpcode.isMaskedShortOp())
+         movOpcode = TR::InstOpCode::KMOVWMaskMask;
+      else if (currentOpcode.isMaskedIntOp())
+         movOpcode = TR::InstOpCode::KMOVDMaskMask;
+      else if (currentOpcode.isMaskedLong())
+         movOpcode = TR::InstOpCode::KMOVQMaskMask;
+      else
+         TR_ASSERT_FATAL(false, "Unknown mask register size for opcode");
+      }
 
    if (targetRegister->getState() == TR::RealRegister::Free)
       {
@@ -1109,7 +1243,7 @@ void OMR::X86::Machine::coerceGPRegisterAssignment(TR::Instruction          *cur
       else
          {
          instr = new (self()->cg()->trHeapMemory()) TR::X86RegRegInstruction(currentInstruction,
-                                             TR::InstOpCode::MOVRegReg(),
+                                             movOpcode,
                                              currentAssignedRegister,
                                              targetRegister, self()->cg());
          currentAssignedRegister->setState(TR::RealRegister::Free);
@@ -1129,7 +1263,9 @@ void OMR::X86::Machine::coerceGPRegisterAssignment(TR::Instruction          *cur
       TR::Register *currentTargetVirtual = targetRegister->getAssignedRegister();
 
       self()->cg()->setRegisterAssignmentFlag(TR_IndirectCoercion);
-      if (currentAssignedRegister != NULL)
+
+      // Cannot XCHG vector mask registers
+      if (currentAssignedRegister != NULL && currentTargetVirtual->getKind() != TR_VMR)
          {
          instr = new (self()->cg()->trHeapMemory()) TR::X86RegRegInstruction(currentInstruction,
                                              TR::InstOpCode::XCHGRegReg(),
@@ -1164,9 +1300,9 @@ void OMR::X86::Machine::coerceGPRegisterAssignment(TR::Instruction          *cur
          if ((targetRegister != candidate) && (candidate != currentTargetVirtual))
             {
             instr = new (self()->cg()->trHeapMemory()) TR::X86RegRegInstruction(currentInstruction,
-                                                TR::InstOpCode::MOVRegReg(),
-                                                targetRegister,
-                                                candidate, self()->cg());
+                                                                                movOpcode,
+                                                                                targetRegister,
+                                                                                candidate, self()->cg());
             currentTargetVirtual->setAssignedRegister(candidate);
             candidate->setAssignedRegister(currentTargetVirtual);
             candidate->setState(targetRegister->getState());
@@ -1676,6 +1812,17 @@ OMR::X86::Machine::initializeRegisterFile(const struct TR::X86LinkageProperties 
                                                   TR::RealRegister::xmmrMask((TR::RealRegister::RegNum)reg), self()->cg());
       }
 
+   if (cg()->comp()->target().cpu.supportsFeature(OMR_FEATURE_X86_AVX512F))
+      {
+      for (reg = TR::RealRegister::k1; reg <= TR::RealRegister::k7; reg++)
+         {
+         _registerFile[reg] = new (self()->cg()->trHeapMemory()) TR::RealRegister(TR_VMR,
+                                                    properties.isPreservedRegister((TR::RealRegister::RegNum)reg) ? PRESERVED_WEIGHT : NONPRESERVED_WEIGHT,
+                                                                                  TR::RealRegister::Free,
+                                                                                  (TR::RealRegister::RegNum)reg,
+                                                                                  TR::RealRegister::vectorMaskMask((TR::RealRegister::RegNum)reg), self()->cg());
+         }
+      }
    }
 
 uint32_t*
@@ -2845,7 +2992,6 @@ TR::RealRegister::RegNum OMR::X86::Machine::getLastXMMR()
    {
       return cg()->comp()->target().cpu.supportsFeature(OMR_FEATURE_X86_AVX512F) ? TR::RealRegister::LastXMMR : TR::RealRegister::LastSSE2XMMReg;
    }
-
 
 #if defined(DEBUG)
 static void printOneRegisterStatus(TR_FrontEnd *fe, TR::FILE *pOutFile, TR_Debug *debug, TR::RealRegister *reg)
