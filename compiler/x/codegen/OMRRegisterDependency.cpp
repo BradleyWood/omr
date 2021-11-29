@@ -776,6 +776,11 @@ void OMR::X86::RegisterDependencyGroup::assignRegisters(TR::Instruction   *curre
                   {
                   op = (assignedReg->isSinglePrecision()) ? TR::InstOpCode::MOVSSRegMem : (cg->getXMMDoubleLoadOpCode());
                   }
+               else if (assignedReg->getKind() == TR_VMR)
+                  {
+                  comp->failCompilation<TR::CompilationException>("RegisterDependencyGroup::assignRegisters() -> Spilling not supported for mask register");
+                  return;
+                  }
                else if (assignedReg->getKind() == TR_VRF)
                   {
                   op = TR::InstOpCode::MOVDQURegMem;
@@ -920,12 +925,14 @@ void OMR::X86::RegisterDependencyGroup::assignRegisters(TR::Instruction   *curre
          virtReg = dependencies[i]->getRegister();
          dependentRegNum = dependencies[i]->getRealRegister();
          dependentRealReg = machine->getRealRegister(dependentRegNum);
+
          if (dependentRealReg->getState() == TR::RealRegister::Free)
             {
             if (virtReg->getKind() == TR_FPR || virtReg->getKind() == TR_VRF)
                machine->coerceXMMRegisterAssignment(currentInstruction, virtReg, dependentRegNum);
             else
                machine->coerceGPRegisterAssignment(currentInstruction, virtReg, dependentRegNum);
+
             virtReg->block();
             changed = true;
             }
@@ -1008,10 +1015,11 @@ void OMR::X86::RegisterDependencyGroup::assignRegisters(TR::Instruction   *curre
             virtReg = dependencies[i]->getRegister();
             if (toRealRegister(virtReg->getAssignedRealRegister()) == NULL)
                {
-               if (virtReg->getKind() == TR_FPR || virtReg->getKind() == TR_VRF)
+               if (virtReg->getKind() == TR_FPR || virtReg->getKind() == TR_VRF || virtReg->getKind() == TR_VMR)
                   machine->coerceGPRegisterAssignment(currentInstruction, virtReg, TR_QuadWordReg);
                else
                   machine->coerceGPRegisterAssignment(currentInstruction, virtReg);
+
                virtReg->block();
                changed = true;
                }
