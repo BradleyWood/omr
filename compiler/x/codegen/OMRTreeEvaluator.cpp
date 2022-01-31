@@ -4058,6 +4058,86 @@ enum BinaryArithmeticOps : uint32_t
    NumBinaryArithmeticOps
    };
 
+#define AVX512F(instruction)    if (features[0]) return instruction;
+#define AVX512VL(instruction)   if (features[1]) return instruction;
+#define AVX512BW(instruction)   if (features[2]) return instruction;
+#define AVX512DQ(instruction)   if (features[3]) return instruction;
+#define AVX2(instruction)       if (features[4]) return instruction;
+#define AVX(instruction)        if (features[5]) return instruction;
+#define SSE(instruction)        if (features[6]) return instruction;
+
+#define AVX512VLBW(instruction) if (features[1] && features[2]) return instruction;
+#define AVX512VLDQ(instruction) if (features[1] && features[3]) return instruction;
+
+#define OPCODE_BY_FEATURE(Opcode, condition) TR::InstOpCode::Mnemonic Opcode(const bool features[]) { condition; return TR::InstOpCode::bad; }
+
+#define OPCODE_BY_VLENGTH(name, a, b, c) TR::InstOpCode::Mnemonic name(bool features[], uint32_t length) \
+   { \
+   if (length == 128)                                                                                    \
+      return a(features);                                                                                \
+   else if (length == 256)                                                                               \
+      return b(features);                                                                                \
+   else if (length == 512)                                                                               \
+      return c(features);                                                                                \
+   else                                                                                                  \
+      TR_ASSERT_FATAL(0, "Unsupported vector size");                                                     \
+   }
+
+#define OPCODE_BY_DATA_TYPE(name, b, s, i, l, f, d) TR::InstOpCode::Mnemonic name(bool features[], uint32_t length, TR::DataType type) \
+   { \
+   if (type == TR::DataTypes::Int8)                                                                            \
+      return b(features, length);                                                                              \
+   if (type == TR::DataTypes::Int16)                                                                           \
+      return s(features, length);                                                                              \
+   if (type == TR::DataTypes::Int32)                                                                           \
+      return i(features, length);                                                                              \
+   if (type == TR::DataTypes::Int64)                                                                           \
+      return l(features, length);                                                                              \
+   if (type == TR::DataTypes::Float)                                                                           \
+      return f(features, length);                                                                              \
+   if (type == TR::DataTypes::Double)                                                                          \
+      return d(features, length);                                                                              \
+   return TR::InstOpCode::bad;                                                                                 \
+}
+
+
+OPCODE_BY_FEATURE(AddInt8Vector128,  AVX512VLBW(TR::InstOpCode::VPADDBXmmMaskXmmXmm) else SSE(TR::InstOpCode::PADDBRegReg))
+
+OPCODE_BY_FEATURE(AddInt8Vector256,  AVX512VLBW(TR::InstOpCode::VPADDBXmmMaskXmmXmm)) // EVEX 256-512 Versions not supported
+OPCODE_BY_FEATURE(AddInt8Vector512,  AVX512VLBW(TR::InstOpCode::VPADDBXmmMaskXmmXmm)) // obviously these lines won't work...
+                                                                                      // just for demonstration as the opcodes
+                                                                                      // are not implemented yet
+
+//OPCODE_BY_FEATURE(AddInt8Vector256,  AVX512VLBW(TR::InstOpCode::VPADDBYmmMaskYmmYmm) else AVX(TR::InstOpCode::VPADDBYmmYmmYmm))
+//OPCODE_BY_FEATURE(AddInt8Vector512,  AVX512VLBW(TR::InstOpCode::VPADDBZmmMaskYmmYmm))
+
+OPCODE_BY_VLENGTH(VAddInt8,     AddInt8Vector128, AddInt8Vector256, AddInt8Vector512)
+
+// Ignore the fact that int16, int32, int64, float, double are not implemented...
+OPCODE_BY_VLENGTH(VAddInt16,    AddInt8Vector128, AddInt8Vector256, AddInt8Vector512)
+OPCODE_BY_VLENGTH(VAddInt32,    AddInt8Vector128, AddInt8Vector256, AddInt8Vector512)
+OPCODE_BY_VLENGTH(VAddInt64,    AddInt8Vector128, AddInt8Vector256, AddInt8Vector512)
+OPCODE_BY_VLENGTH(VAddFloat,    AddInt8Vector128, AddInt8Vector256, AddInt8Vector512)
+OPCODE_BY_VLENGTH(VAddDouble,   AddInt8Vector128, AddInt8Vector256, AddInt8Vector512)
+
+OPCODE_BY_DATA_TYPE(VADD,  VAddInt8, VAddInt16, VAddInt32, VAddInt64, VAddFloat, VAddDouble)
+
+/**
+ * Here is where the opcodes will be retrieved in practice...
+ */
+TR::InstOpCode::Mnemonic getSimdInstruction(TR::ILOpCodes op, TR::DataType t, uint32_t v)
+   {
+   bool features[9] = { false, false, false, false, false, true, true };
+
+   switch (op)
+      {
+      case TR::ILOpCodes::vadd:
+         return VADD(features, v, t);
+      default:
+         return TR::InstOpCode::bad;
+      }
+   }
+
 static const TR::InstOpCode::Mnemonic BinaryArithmeticOpCodesForReg[TR::NumOMRTypes][NumBinaryArithmeticOps] =
    {
    //  Invalid,       Add,         Sub,         Mul,         Div,          And,         Or,       Xor
@@ -4156,7 +4236,6 @@ TR::Register* OMR::X86::TreeEvaluator::FloatingPointAndVectorBinaryArithmeticEva
       default:
          TR_ASSERT(false, "Unsupported OpCode");
       }
-
    TR::DataType type = node->getDataType();
 
    TR::Node* operandNode0 = node->getChild(0);
