@@ -47,6 +47,14 @@ class InstOpCode
       {
       #include "codegen/InstOpCode.enum"
       NumOpCodes
+#if __has_include("codegen/AliasInstOpCode.enum")
+      ,
+      #include "codegen/AliasInstOpCode.enum"
+      /**
+       *  Alias for opcodes that have the same encoding, but support multiple forms
+       *  such as RegRegReg and RegRegMem.
+       */
+#endif
       };
 
    protected:
