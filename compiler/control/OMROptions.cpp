@@ -528,6 +528,7 @@ TR::OptionTable OMR::Options::_jitOptions[] = {
    {"disableSIMDArrayTranslate",           "O\tdisable SIMD instructions for array translate", SET_OPTION_BIT(TR_DisableSIMDArrayTranslate), "F"},
    {"disableSIMDDoubleMaxMin",             "O\tdisable SIMD instructions for double max min", SET_OPTION_BIT(TR_DisableSIMDDoubleMaxMin), "F"},
    {"disableSIMDStringHashCode",           "O\tdisable vectorized java/lang/String.hashCode implementation", SET_OPTION_BIT(TR_DisableSIMDStringHashCode), "F"},
+   {"disableSIMDStringInflation",          "O\tDisable vectorized string inflation", SET_OPTION_BIT(TR_DisableSIMDStringInflation), "F"},
    {"disableSIMDUTF16BEEncoder",           "M\tdisable inlining of SIMD UTF16 Big Endian encoder", SET_OPTION_BIT(TR_DisableSIMDUTF16BEEncoder), "F"},
    {"disableSIMDUTF16LEEncoder",           "M\tdisable inlining of SIMD UTF16 Little Endian encoder", SET_OPTION_BIT(TR_DisableSIMDUTF16LEEncoder), "F"},
    {"disableSmartPlacementOfCodeCaches",   "O\tdisable placement of code caches in memory so they are near each other and the DLLs",  SET_OPTION_BIT(TR_DisableSmartPlacementOfCodeCaches), "F", NOT_IN_SUBSET},
