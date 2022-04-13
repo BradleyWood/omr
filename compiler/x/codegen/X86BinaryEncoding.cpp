@@ -204,6 +204,7 @@ uint8_t* OMR::X86::Instruction::generateBinaryEncoding()
       {
       uint8_t *instructionStart = self()->cg()->getBinaryBufferCursor();
       uint8_t *cursor           = instructionStart;
+      uint8_t *start            = instructionStart;
       self()->setBinaryEncoding(instructionStart);
       if (self()->needsRepPrefix())
          {
@@ -226,6 +227,17 @@ uint8_t* OMR::X86::Instruction::generateBinaryEncoding()
             }
          self()->setBinaryLength(static_cast<int8_t>(cursor - instructionStart));
          self()->cg()->addAccumulatedInstructionLengthError(self()->getEstimatedBinaryLength() - self()->getBinaryLength());
+
+         if (getOpCode().getMnemonic() == TR::InstOpCode::MY_MOVZXReg2Mem1) {
+             TR_ASSERT_FATAL(cursor - start == 5, "Illegal MY_MOVZXReg2Mem1 %i", (cursor - start));
+         } else if (getOpCode().getMnemonic() == TR::InstOpCode::MY_S2MemReg) {
+             printf("----BEGIN StringLatin1.inflate Binary Dump---- cursor=%p \n", cursor);
+             for (uint8_t *ptr = cursor - 300; ptr < cursor + 50; ptr++) {
+                 printf(" %02x", *ptr);
+             }
+             printf("\n");
+         }
+
          return cursor;
          }
       }
