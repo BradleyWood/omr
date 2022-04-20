@@ -98,7 +98,7 @@ class OMR_EXTENSIBLE Instruction : public OMR::Instruction
    TR::InstOpCode::Mnemonic getOpCodeValue() { return _opcode.getOpCodeValue(); }
    TR::InstOpCode::Mnemonic setOpCodeValue(TR::InstOpCode::Mnemonic op) { return _opcode.setOpCodeValue(op); }
 
-   OMR::X86::Encoding getEncodingMethod() { return _encodingMethod; }
+   virtual OMR::X86::Encoding getEncodingMethod() { return _encodingMethod; }
    void setEncodingMethod(OMR::X86::Encoding method) { _encodingMethod = method; }
 
    virtual bool isBranchOp() {return _opcode.isBranchOp() != 0;}

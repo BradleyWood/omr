@@ -714,8 +714,9 @@ class X86RegInstruction : public TR::Instruction
    X86RegInstruction(TR::Register      *reg,
                          TR::Node          *node,
                          TR::InstOpCode::Mnemonic    op,
-                         TR::CodeGenerator *cg)
-      : TR::Instruction(node, op, cg), _targetRegister(reg)
+                         TR::CodeGenerator *cg,
+                         OMR::X86::Encoding encoding = OMR::X86::Default)
+      : TR::Instruction(node, op, cg, encoding), _targetRegister(reg)
       {
       TR::Compilation *comp = cg->comp();
       useRegister(reg);
@@ -745,8 +746,9 @@ class X86RegInstruction : public TR::Instruction
    X86RegInstruction(TR::Register *reg,
                         TR::InstOpCode::Mnemonic op,
                         TR::Instruction *precedingInstruction,
-                        TR::CodeGenerator *cg)
-      : TR::Instruction(op, precedingInstruction, cg), _targetRegister(reg)
+                        TR::CodeGenerator *cg,
+                        OMR::X86::Encoding encoding = OMR::X86::Default)
+      : TR::Instruction(op, precedingInstruction, cg, encoding), _targetRegister(reg)
       {
       useRegister(reg);
       getOpCode().trackUpperBitsOnReg(reg, cg);
@@ -756,8 +758,9 @@ class X86RegInstruction : public TR::Instruction
                          TR::Register                         *reg,
                          TR::Node                             *node,
                          TR::InstOpCode::Mnemonic                       op,
-                         TR::CodeGenerator                    *cg)
-      : TR::Instruction(cond, node, op, cg), _targetRegister(reg)
+                         TR::CodeGenerator                    *cg,
+                         OMR::X86::Encoding encoding = OMR::X86::Default)
+      : TR::Instruction(cond, node, op, cg, encoding), _targetRegister(reg)
       {
       TR::Compilation *comp = cg->comp();
       useRegister(reg);
@@ -788,31 +791,35 @@ class X86RegInstruction : public TR::Instruction
                         TR::Register *reg,
                         TR::InstOpCode::Mnemonic op,
                         TR::Instruction *precedingInstruction,
-                        TR::CodeGenerator *cg)
-      : TR::Instruction(cond, op, precedingInstruction, cg), _targetRegister(reg)
+                        TR::CodeGenerator *cg,
+                        OMR::X86::Encoding encoding = OMR::X86::Default)
+      : TR::Instruction(cond, op, precedingInstruction, cg, encoding), _targetRegister(reg)
       {
       useRegister(reg);
       getOpCode().trackUpperBitsOnReg(reg, cg);
       }
 
-   X86RegInstruction(TR::InstOpCode::Mnemonic op, TR::Node * node, TR::Register *reg, TR::CodeGenerator *cg);
+   X86RegInstruction(TR::InstOpCode::Mnemonic op, TR::Node * node, TR::Register *reg, TR::CodeGenerator *cg, OMR::X86::Encoding encoding = OMR::X86::Default);
 
    X86RegInstruction(TR::Instruction *precedingInstruction,
                         TR::InstOpCode::Mnemonic op,
                         TR::Register *reg,
-                        TR::CodeGenerator *cg);
+                        TR::CodeGenerator *cg,
+                        OMR::X86::Encoding encoding = OMR::X86::Default);
 
    X86RegInstruction(TR::InstOpCode::Mnemonic op,
                         TR::Node *node,
                         TR::Register *reg,
                         TR::RegisterDependencyConditions *cond,
-                        TR::CodeGenerator *cg);
+                        TR::CodeGenerator *cg,
+                        OMR::X86::Encoding encoding = OMR::X86::Default);
 
    X86RegInstruction(TR::Instruction *precedingInstruction,
                         TR::InstOpCode::Mnemonic op,
                         TR::Register *reg,
                         TR::RegisterDependencyConditions *cond,
-                        TR::CodeGenerator *cg);
+                        TR::CodeGenerator *cg,
+                        OMR::X86::Encoding encoding = OMR::X86::Default);
 
    virtual char *description() { return "X86Reg"; }
 
@@ -826,6 +833,18 @@ class X86RegInstruction : public TR::Instruction
 
    virtual TR::Register *getTargetRegister()               {return _targetRegister;}
    TR::Register *setTargetRegister(TR::Register *r) {return (_targetRegister = r);}
+
+   OMR::X86::Encoding getEncodingMethod()
+      {
+      OMR::X86::Encoding encoding = TR::Instruction::getEncodingMethod();
+
+      if (encoding == OMR::X86::Default && !self()->cg()->comp()->target().cpu.supportsAVX())
+         {
+         encoding = OMR::X86::Legacy;
+         }
+
+      return encoding;
+      }
 
    void applyTargetRegisterToModRMByte(uint8_t *modRM)
       {
@@ -901,8 +920,9 @@ class X86RegRegInstruction : public TR::X86RegInstruction
                             TR::Register      *treg,
                             TR::Node          *node,
                             TR::InstOpCode::Mnemonic    op,
-                            TR::CodeGenerator *cg)
-      : TR::X86RegInstruction(treg, node, op, cg), _sourceRegister(sreg)
+                            TR::CodeGenerator *cg,
+                            OMR::X86::Encoding encoding = OMR::X86::Default)
+      : TR::X86RegInstruction(treg, node, op, cg, encoding), _sourceRegister(sreg)
       {
       useRegister(sreg);
       }
@@ -911,8 +931,9 @@ class X86RegRegInstruction : public TR::X86RegInstruction
                            TR::Register *treg,
                            TR::InstOpCode::Mnemonic op,
                            TR::Instruction *precedingInstruction,
-                           TR::CodeGenerator *cg)
-      : TR::X86RegInstruction(treg, op, precedingInstruction, cg), _sourceRegister(sreg)
+                           TR::CodeGenerator *cg,
+                           OMR::X86::Encoding encoding = OMR::X86::Default)
+      : TR::X86RegInstruction(treg, op, precedingInstruction, cg, encoding), _sourceRegister(sreg)
       {
       useRegister(sreg);
       }
@@ -921,9 +942,10 @@ class X86RegRegInstruction : public TR::X86RegInstruction
                             TR::Register                         *sreg,
                             TR::Register                         *treg,
                             TR::Node                             *node,
-                            TR::InstOpCode::Mnemonic                       op,
-                            TR::CodeGenerator                    *cg)
-      : TR::X86RegInstruction(cond, treg, node, op, cg), _sourceRegister(sreg)
+                            TR::InstOpCode::Mnemonic              op,
+                            TR::CodeGenerator                    *cg,
+                            OMR::X86::Encoding encoding = OMR::X86::Default)
+      : TR::X86RegInstruction(cond, treg, node, op, cg, encoding), _sourceRegister(sreg)
       {
       useRegister(sreg);
       }
@@ -933,8 +955,9 @@ class X86RegRegInstruction : public TR::X86RegInstruction
                            TR::Register *treg,
                            TR::InstOpCode::Mnemonic op,
                            TR::Instruction *precedingInstruction,
-                           TR::CodeGenerator *cg)
-      : TR::X86RegInstruction(cond, treg, op, precedingInstruction, cg), _sourceRegister(sreg)
+                           TR::CodeGenerator *cg,
+                           OMR::X86::Encoding encoding = OMR::X86::Default)
+      : TR::X86RegInstruction(cond, treg, op, precedingInstruction, cg, encoding), _sourceRegister(sreg)
       {
       useRegister(sreg);
       }
@@ -943,27 +966,31 @@ class X86RegRegInstruction : public TR::X86RegInstruction
                             TR::Node          *node,
                             TR::Register      *treg,
                             TR::Register      *sreg,
-                            TR::CodeGenerator *cg);
+                            TR::CodeGenerator *cg,
+                            OMR::X86::Encoding encoding = OMR::X86::Default);
 
    X86RegRegInstruction(TR::Instruction *precedingInstruction,
                            TR::InstOpCode::Mnemonic op,
                            TR::Register *treg,
                            TR::Register *sreg,
-                           TR::CodeGenerator *cg);
+                           TR::CodeGenerator *cg,
+                           OMR::X86::Encoding encoding = OMR::X86::Default);
 
    X86RegRegInstruction(TR::InstOpCode::Mnemonic                       op,
                             TR::Node                             *node,
                             TR::Register                         *treg,
                             TR::Register                         *sreg,
                             TR::RegisterDependencyConditions  *cond,
-                            TR::CodeGenerator                    *cg);
+                            TR::CodeGenerator                    *cg,
+                            OMR::X86::Encoding encoding = OMR::X86::Default);
 
    X86RegRegInstruction(TR::Instruction *precedingInstruction,
                             TR::InstOpCode::Mnemonic                       op,
                             TR::Register                         *treg,
                             TR::Register                         *sreg,
                             TR::RegisterDependencyConditions  *cond,
-                            TR::CodeGenerator                    *cg);
+                            TR::CodeGenerator                    *cg,
+                            OMR::X86::Encoding encoding = OMR::X86::Default);
 
    virtual char *description() { return "X86RegReg"; }
 
@@ -1199,8 +1226,9 @@ class X86RegRegRegInstruction : public TR::X86RegRegInstruction
                                TR::Register                         *treg,
                                TR::Node                             *node,
                                TR::InstOpCode::Mnemonic                       op,
-                               TR::CodeGenerator                    *cg)
-      : TR::X86RegRegInstruction(cond, srreg, treg, node, op, cg), _source2ndRegister(slreg)
+                               TR::CodeGenerator                    *cg,
+                               OMR::X86::Encoding encoding = OMR::X86::Default)
+      : TR::X86RegRegInstruction(cond, srreg, treg, node, op, cg, encoding), _source2ndRegister(slreg)
       {
       useRegister(slreg);
       }
@@ -1211,8 +1239,9 @@ class X86RegRegRegInstruction : public TR::X86RegRegInstruction
                                TR::Register                         *treg,
                                TR::InstOpCode::Mnemonic                       op,
                                TR::Instruction                      *precedingInstruction,
-                               TR::CodeGenerator                    *cg)
-      : TR::X86RegRegInstruction(cond, srreg, treg, op, precedingInstruction, cg), _source2ndRegister(slreg)
+                               TR::CodeGenerator                    *cg,
+                               OMR::X86::Encoding encoding = OMR::X86::Default)
+      : TR::X86RegRegInstruction(cond, srreg, treg, op, precedingInstruction, cg, encoding), _source2ndRegister(slreg)
       {
       useRegister(slreg);
       }
@@ -1222,8 +1251,9 @@ class X86RegRegRegInstruction : public TR::X86RegRegInstruction
                                TR::Register      *treg,
                                TR::Node          *node,
                                TR::InstOpCode::Mnemonic    op,
-                               TR::CodeGenerator *cg)
-      : TR::X86RegRegInstruction(srreg, treg, node, op, cg), _source2ndRegister(slreg)
+                               TR::CodeGenerator *cg,
+                               OMR::X86::Encoding encoding = OMR::X86::Default)
+      : TR::X86RegRegInstruction(srreg, treg, node, op, cg, encoding), _source2ndRegister(slreg)
       {
       useRegister(slreg);
       }
@@ -1233,8 +1263,9 @@ class X86RegRegRegInstruction : public TR::X86RegRegInstruction
                                TR::Register      *treg,
                                TR::InstOpCode::Mnemonic   op,
                                TR::Instruction   *precedingInstruction,
-                               TR::CodeGenerator *cg)
-      : TR::X86RegRegInstruction(srreg, treg, op, precedingInstruction, cg), _source2ndRegister(slreg)
+                               TR::CodeGenerator *cg,
+                               OMR::X86::Encoding encoding = OMR::X86::Default)
+      : TR::X86RegRegInstruction(srreg, treg, op, precedingInstruction, cg, encoding), _source2ndRegister(slreg)
       {
       useRegister(slreg);
       }
@@ -1244,14 +1275,16 @@ class X86RegRegRegInstruction : public TR::X86RegRegInstruction
                                TR::Register      *treg,
                                TR::Register      *slreg,
                                TR::Register      *srreg,
-                               TR::CodeGenerator *cg);
+                               TR::CodeGenerator *cg,
+                               OMR::X86::Encoding encoding = OMR::X86::Default);
 
    X86RegRegRegInstruction(TR::Instruction   *precedingInstruction,
                                TR::InstOpCode::Mnemonic    op,
                                TR::Register      *treg,
                                TR::Register      *slreg,
                                TR::Register      *srreg,
-                               TR::CodeGenerator *cg);
+                               TR::CodeGenerator *cg,
+                               OMR::X86::Encoding encoding = OMR::X86::Default);
 
    X86RegRegRegInstruction(TR::InstOpCode::Mnemonic                       op,
                                TR::Node                             *node,
@@ -1259,7 +1292,8 @@ class X86RegRegRegInstruction : public TR::X86RegRegInstruction
                                TR::Register                         *slreg,
                                TR::Register                         *srreg,
                                TR::RegisterDependencyConditions  *cond,
-                               TR::CodeGenerator                    *cg);
+                               TR::CodeGenerator                    *cg,
+                               OMR::X86::Encoding encoding = OMR::X86::Default);
 
    X86RegRegRegInstruction(TR::Instruction                      *precedingInstruction,
                                TR::InstOpCode::Mnemonic                       op,
@@ -1267,7 +1301,8 @@ class X86RegRegRegInstruction : public TR::X86RegRegInstruction
                                TR::Register                         *slreg,
                                TR::Register                         *srreg,
                                TR::RegisterDependencyConditions  *cond,
-                               TR::CodeGenerator                    *cg);
+                               TR::CodeGenerator                    *cg,
+                               OMR::X86::Encoding encoding = OMR::X86::Default);
 
    virtual char *description() { return "X86RegRegReg"; }
 
@@ -1343,8 +1378,8 @@ class X86MemInstruction : public TR::Instruction
 
    public:
 
-   X86MemInstruction(TR::Node * node, TR::InstOpCode::Mnemonic op, TR::CodeGenerator *cg, TR::Register *srcReg = NULL)
-      : TR::Instruction(node, op, cg), _memoryReference(NULL)
+   X86MemInstruction(TR::Node * node, TR::InstOpCode::Mnemonic op, TR::CodeGenerator *cg, TR::Register *srcReg = NULL, OMR::X86::Encoding encoding = OMR::X86::Default)
+      : TR::Instruction(node, op, cg, encoding), _memoryReference(NULL)
       {
       }
 
@@ -1352,8 +1387,9 @@ class X86MemInstruction : public TR::Instruction
                          TR::Node                *node,
                          TR::InstOpCode::Mnemonic          op,
                          TR::CodeGenerator       *cg,
-                         TR::Register *srcReg = NULL)
-      : TR::Instruction(node, op, cg), _memoryReference(mr)
+                         TR::Register *srcReg = NULL,
+                         OMR::X86::Encoding encoding = OMR::X86::Default)
+      : TR::Instruction(node, op, cg, encoding), _memoryReference(mr)
       {
       mr->useRegisters(this, cg);
       if (mr->getUnresolvedDataSnippet() != NULL)
@@ -1384,8 +1420,9 @@ class X86MemInstruction : public TR::Instruction
                          TR::InstOpCode::Mnemonic          op,
                          TR::Instruction         *precedingInstruction,
                          TR::CodeGenerator       *cg,
-                         TR::Register *srcReg = NULL)
-      : TR::Instruction(op, precedingInstruction, cg), _memoryReference(mr)
+                         TR::Register *srcReg = NULL,
+                         OMR::X86::Encoding encoding = OMR::X86::Default)
+      : TR::Instruction(op, precedingInstruction, cg, encoding), _memoryReference(mr)
       {
       mr->useRegisters(this, cg);
       if (mr->getUnresolvedDataSnippet() != NULL)
@@ -1407,8 +1444,9 @@ class X86MemInstruction : public TR::Instruction
                          TR::Node                             *node,
                          TR::InstOpCode::Mnemonic                       op,
                          TR::CodeGenerator                    *cg,
-                         TR::Register *srcReg = NULL)
-      : TR::Instruction(cond, node, op, cg), _memoryReference(mr)
+                         TR::Register *srcReg = NULL,
+                         OMR::X86::Encoding encoding = OMR::X86::Default)
+      : TR::Instruction(cond, node, op, cg, encoding), _memoryReference(mr)
       {
       mr->useRegisters(this, cg);
       if (mr->getUnresolvedDataSnippet() != NULL)
@@ -1440,8 +1478,9 @@ class X86MemInstruction : public TR::Instruction
                          TR::InstOpCode::Mnemonic                       op,
                          TR::Instruction                      *precedingInstruction,
                          TR::CodeGenerator                    *cg,
-                         TR::Register *srcReg = NULL)
-      : TR::Instruction(cond, op, precedingInstruction, cg), _memoryReference(mr)
+                         TR::Register *srcReg = NULL,
+                         OMR::X86::Encoding encoding = OMR::X86::Default)
+      : TR::Instruction(cond, op, precedingInstruction, cg, encoding), _memoryReference(mr)
       {
       mr->useRegisters(this, cg);
       if (mr->getUnresolvedDataSnippet() != NULL)
@@ -1462,24 +1501,39 @@ class X86MemInstruction : public TR::Instruction
                          TR::Node                *node,
                          TR::MemoryReference  *mr,
                          TR::CodeGenerator       *cg,
-                         TR::Register            *sreg=NULL);
+                         TR::Register            *sreg=NULL,
+                         OMR::X86::Encoding encoding = OMR::X86::Default);
 
    X86MemInstruction(TR::Instruction         *precedingInstruction,
                          TR::InstOpCode::Mnemonic          op,
                          TR::MemoryReference  *mr,
                          TR::CodeGenerator       *cg,
-                         TR::Register            *sreg=NULL);
+                         TR::Register            *sreg=NULL,
+                         OMR::X86::Encoding encoding = OMR::X86::Default);
 
    X86MemInstruction(TR::InstOpCode::Mnemonic                       op,
                          TR::Node                             *node,
                          TR::MemoryReference               *mr,
                          TR::RegisterDependencyConditions  *cond,
                          TR::CodeGenerator                    *cg,
-                         TR::Register                         *sreg=NULL );
+                         TR::Register                         *sreg=NULL,
+                         OMR::X86::Encoding encoding = OMR::X86::Default);
 
    virtual char *description() { return "X86Mem"; }
 
    virtual Kind getKind() { return IsMem; }
+
+   OMR::X86::Encoding getEncodingMethod()
+      {
+      OMR::X86::Encoding encoding = TR::Instruction::getEncodingMethod();
+
+      if (encoding == OMR::X86::Default && !self()->cg()->comp()->target().cpu.supportsAVX())
+         {
+         encoding = OMR::X86::Legacy;
+         }
+
+      return encoding;
+      }
 
    virtual TR::MemoryReference  *getMemoryReference() {return _memoryReference;}
    TR::MemoryReference  *setMemoryReference(TR::MemoryReference  *p, TR::CodeGenerator *cg)
@@ -1704,8 +1758,9 @@ class X86MemRegInstruction : public TR::X86MemInstruction
                             TR::MemoryReference  *mr,
                             TR::Node                *node,
                             TR::InstOpCode::Mnemonic          op,
-                            TR::CodeGenerator       *cg)
-      : TR::X86MemInstruction(mr, node, op, cg, sreg), _sourceRegister(sreg)
+                            TR::CodeGenerator       *cg,
+                            OMR::X86::Encoding encoding = OMR::X86::Default)
+      : TR::X86MemInstruction(mr, node, op, cg, sreg, encoding), _sourceRegister(sreg)
       {
       useRegister(sreg);
       }
@@ -1714,8 +1769,9 @@ class X86MemRegInstruction : public TR::X86MemInstruction
                             TR::MemoryReference  *mr,
                             TR::InstOpCode::Mnemonic          op,
                             TR::Instruction         *precedingInstruction,
-                            TR::CodeGenerator       *cg)
-      : TR::X86MemInstruction(mr, op, precedingInstruction, cg, sreg), _sourceRegister(sreg)
+                            TR::CodeGenerator       *cg,
+                        OMR::X86::Encoding encoding = OMR::X86::Default)
+      : TR::X86MemInstruction(mr, op, precedingInstruction, cg, sreg, encoding), _sourceRegister(sreg)
       {
       useRegister(sreg);
       }
@@ -1725,8 +1781,9 @@ class X86MemRegInstruction : public TR::X86MemInstruction
                             TR::MemoryReference               *mr,
                             TR::Node                             *node,
                             TR::InstOpCode::Mnemonic                       op,
-                            TR::CodeGenerator                    *cg)
-      : TR::X86MemInstruction(cond, mr, node, op, cg, sreg), _sourceRegister(sreg)
+                            TR::CodeGenerator                    *cg,
+                            OMR::X86::Encoding encoding = OMR::X86::Default)
+      : TR::X86MemInstruction(cond, mr, node, op, cg, sreg, encoding), _sourceRegister(sreg)
       {
       useRegister(sreg);
       }
@@ -1736,8 +1793,9 @@ class X86MemRegInstruction : public TR::X86MemInstruction
                             TR::MemoryReference               *mr,
                             TR::InstOpCode::Mnemonic                       op,
                             TR::Instruction                      *precedingInstruction,
-                            TR::CodeGenerator                    *cg)
-      : TR::X86MemInstruction(cond, mr, op, precedingInstruction, cg, sreg), _sourceRegister(sreg)
+                            TR::CodeGenerator                    *cg,
+                            OMR::X86::Encoding encoding = OMR::X86::Default)
+      : TR::X86MemInstruction(cond, mr, op, precedingInstruction, cg, sreg, encoding), _sourceRegister(sreg)
       {
       useRegister(sreg);
       }
@@ -1746,27 +1804,31 @@ class X86MemRegInstruction : public TR::X86MemInstruction
                             TR::Node                *node,
                             TR::MemoryReference  *mr,
                             TR::Register            *sreg,
-                            TR::CodeGenerator       *cg);
+                            TR::CodeGenerator       *cg,
+                            OMR::X86::Encoding encoding = OMR::X86::Default);
 
    X86MemRegInstruction(TR::Instruction         *precedingInstruction,
                             TR::InstOpCode::Mnemonic          op,
                             TR::MemoryReference  *mr,
                             TR::Register            *sreg,
-                            TR::CodeGenerator       *cg);
+                            TR::CodeGenerator       *cg,
+                            OMR::X86::Encoding encoding = OMR::X86::Default);
 
    X86MemRegInstruction(TR::InstOpCode::Mnemonic                       op,
                             TR::Node                             *node,
                             TR::MemoryReference               *mr,
                             TR::Register                         *sreg,
                             TR::RegisterDependencyConditions  *cond,
-                            TR::CodeGenerator                    *cg);
+                            TR::CodeGenerator                    *cg,
+                            OMR::X86::Encoding encoding = OMR::X86::Default);
 
    X86MemRegInstruction(TR::Instruction                      *precedingInstruction,
                             TR::InstOpCode::Mnemonic                       op,
                             TR::MemoryReference               *mr,
                             TR::Register                         *sreg,
                             TR::RegisterDependencyConditions  *cond,
-                            TR::CodeGenerator                    *cg);
+                            TR::CodeGenerator                    *cg,
+                            OMR::X86::Encoding encoding = OMR::X86::Default);
 
    virtual char *description() { return "X86MemReg"; }
 
@@ -1846,8 +1908,9 @@ class X86RegMemInstruction : public TR::X86RegInstruction
                            TR::Register *treg,
                            TR::Node *node,
                            TR::InstOpCode::Mnemonic op,
-                           TR::CodeGenerator *cg)
-       : TR::X86RegInstruction(treg, node, op, cg), _memoryReference(mr)
+                           TR::CodeGenerator *cg,
+                           OMR::X86::Encoding encoding = OMR::X86::Default)
+       : TR::X86RegInstruction(treg, node, op, cg, encoding), _memoryReference(mr)
       {
       mr->useRegisters(this, cg);
       if (mr->getUnresolvedDataSnippet() != NULL)
@@ -1871,8 +1934,9 @@ class X86RegMemInstruction : public TR::X86RegInstruction
                             TR::Register            *treg,
                             TR::InstOpCode::Mnemonic          op,
                             TR::Instruction         *precedingInstruction,
-                            TR::CodeGenerator       *cg)
-      : TR::X86RegInstruction(treg, op, precedingInstruction, cg),
+                            TR::CodeGenerator       *cg,
+                            OMR::X86::Encoding encoding = OMR::X86::Default)
+      : TR::X86RegInstruction(treg, op, precedingInstruction, cg, encoding),
         _memoryReference(mr)
       {
       mr->useRegisters(this, cg);
@@ -1886,27 +1950,31 @@ class X86RegMemInstruction : public TR::X86RegInstruction
                             TR::Node                *node,
                             TR::Register            *treg,
                             TR::MemoryReference  *mr,
-                            TR::CodeGenerator       *cg);
+                            TR::CodeGenerator       *cg,
+                            OMR::X86::Encoding encoding = OMR::X86::Default);
 
    X86RegMemInstruction(TR::Instruction         *precedingInstruction,
                             TR::InstOpCode::Mnemonic          op,
                             TR::Register            *treg,
                             TR::MemoryReference  *mr,
-                            TR::CodeGenerator       *cg);
+                            TR::CodeGenerator       *cg,
+                            OMR::X86::Encoding encoding = OMR::X86::Default);
 
    X86RegMemInstruction(TR::InstOpCode::Mnemonic                       op,
                             TR::Node                             *node,
                             TR::Register                         *treg,
                             TR::MemoryReference               *mr,
                             TR::RegisterDependencyConditions  *cond,
-                            TR::CodeGenerator                    *cg);
+                            TR::CodeGenerator                    *cg,
+                            OMR::X86::Encoding encoding = OMR::X86::Default);
 
    X86RegMemInstruction(TR::Instruction                      *precedingInstruction,
                             TR::InstOpCode::Mnemonic                       op,
                             TR::Register                         *treg,
                             TR::MemoryReference               *mr,
                             TR::RegisterDependencyConditions  *cond,
-                            TR::CodeGenerator                    *cg);
+                            TR::CodeGenerator                    *cg,
+                            OMR::X86::Encoding encoding = OMR::X86::Default);
 
    virtual char *description() { return "X86RegMem"; }
 
@@ -2008,14 +2076,16 @@ class X86RegRegMemInstruction : public TR::X86RegMemInstruction
                            TR::Register        *slreg,
                            TR::Register        *srreg,
                            TR::MemoryReference *mr,
-                           TR::CodeGenerator   *cg);
+                           TR::CodeGenerator   *cg,
+                           OMR::X86::Encoding encoding = OMR::X86::Default);
    X86RegRegMemInstruction(TR::InstOpCode::Mnemonic                     op,
                            TR::Node                         *node,
                            TR::Register                     *slreg,
                            TR::Register                     *srreg,
                            TR::MemoryReference              *mr,
                            TR::RegisterDependencyConditions *cond,
-                           TR::CodeGenerator                *cg);
+                           TR::CodeGenerator                *cg,
+                           OMR::X86::Encoding encoding = OMR::X86::Default);
 
    virtual char *description() { return "X86RegRegMem"; }
 
@@ -2918,8 +2988,8 @@ TR::X86MemTableInstruction * generateMemTableInstruction(TR::InstOpCode::Mnemoni
 TR::X86MemTableInstruction * generateMemTableInstruction(TR::InstOpCode::Mnemonic op, TR::Node *node, TR::MemoryReference *mr, ncount_t numEntries, TR::RegisterDependencyConditions *deps, TR::CodeGenerator *cg);
 
 TR::X86RegImmInstruction  * generateRegImmInstruction(TR::Instruction *, TR::InstOpCode::Mnemonic op, TR::Register * reg1, int32_t imm, TR::CodeGenerator *cg, int32_t reloKind=TR_NoRelocation);
-TR::X86RegMemInstruction  * generateRegMemInstruction(TR::Instruction *, TR::InstOpCode::Mnemonic op, TR::Register * reg1, TR::MemoryReference  * mr, TR::CodeGenerator *cg);
-TR::X86RegRegInstruction  * generateRegRegInstruction(TR::Instruction *, TR::InstOpCode::Mnemonic op, TR::Register * reg1, TR::Register * reg2, TR::CodeGenerator *cg);
+TR::X86RegMemInstruction  * generateRegMemInstruction(TR::Instruction *, TR::InstOpCode::Mnemonic op, TR::Register * reg1, TR::MemoryReference  * mr, TR::CodeGenerator *cg, OMR::X86::Encoding encoding = OMR::X86::Default);
+TR::X86RegRegInstruction  * generateRegRegInstruction(TR::Instruction *, TR::InstOpCode::Mnemonic op, TR::Register * reg1, TR::Register * reg2, TR::CodeGenerator *cg, OMR::X86::Encoding encoding = OMR::X86::Default);
 
 /** \brief
  *   Insert instructions to check DF flag is in the right state (zero) and trap if not
@@ -2987,24 +3057,25 @@ TR::X86RegImmInstruction  * generateRegImmInstruction(TR::InstOpCode::Mnemonic o
 
 TR::X86RegImmSymInstruction  *generateRegImmSymInstruction(TR::InstOpCode::Mnemonic op, TR::Node *, TR::Register * reg1, int32_t imm, TR::SymbolReference *, TR::CodeGenerator *cg);
 
-TR::X86RegMemInstruction  * generateRegMemInstruction(TR::InstOpCode::Mnemonic op, TR::Node *, TR::Register * reg1, TR::MemoryReference  * mr, TR::RegisterDependencyConditions  *deps, TR::CodeGenerator *cg);
-TR::X86RegMemInstruction  * generateRegMemInstruction(TR::InstOpCode::Mnemonic op, TR::Node *, TR::Register * reg1, TR::MemoryReference  * mr, TR::CodeGenerator *cg);
-TR::X86RegRegInstruction  * generateRegRegInstruction(TR::InstOpCode::Mnemonic op, TR::Node *, TR::Register * reg1, TR::Register * reg2, TR::RegisterDependencyConditions  *deps, TR::CodeGenerator *cg);
-TR::X86RegRegInstruction  * generateRegRegInstruction(TR::InstOpCode::Mnemonic op, TR::Node *, TR::Register * reg1, TR::Register * reg2, TR::CodeGenerator *cg);
+TR::X86RegMemInstruction  * generateRegMemInstruction(TR::InstOpCode::Mnemonic op, TR::Node *, TR::Register * reg1, TR::MemoryReference  * mr, TR::RegisterDependencyConditions  *deps, TR::CodeGenerator *cg, OMR::X86::Encoding encoding = OMR::X86::Default);
+TR::X86RegMemInstruction  * generateRegMemInstruction(TR::InstOpCode::Mnemonic op, TR::Node *, TR::Register * reg1, TR::MemoryReference  * mr, TR::CodeGenerator *cg, OMR::X86::Encoding encoding = OMR::X86::Default);
+TR::X86RegRegInstruction  * generateRegRegInstruction(TR::InstOpCode::Mnemonic op, TR::Node *, TR::Register * reg1, TR::Register * reg2, TR::RegisterDependencyConditions  *deps, TR::CodeGenerator *cg, OMR::X86::Encoding encoding = OMR::X86::Default);
+TR::X86RegRegInstruction  * generateRegRegInstruction(TR::InstOpCode::Mnemonic op, TR::Node *, TR::Register * reg1, TR::Register * reg2, TR::CodeGenerator *cg, OMR::X86::Encoding encoding = OMR::X86::Default);
+
 TR::X86MemImmInstruction  * generateMemImmInstruction(TR::InstOpCode::Mnemonic op, TR::Node *, TR::MemoryReference  * mr, int32_t imm, TR::CodeGenerator *cg, int32_t reloKind = TR_NoRelocation);
 TR::X86MemImmInstruction  * generateMemImmInstruction(TR::Instruction *, TR::InstOpCode::Mnemonic op, TR::MemoryReference  * mr, int32_t imm, TR::CodeGenerator *cg, int32_t reloKind = TR_NoRelocation);
-TR::X86MemRegInstruction  * generateMemRegInstruction(TR::Instruction *precedingInstruction, TR::InstOpCode::Mnemonic op, TR::MemoryReference  *mr, TR::Register *sreg, TR::CodeGenerator *cg);
-TR::X86MemRegInstruction  * generateMemRegInstruction(TR::InstOpCode::Mnemonic op, TR::Node *, TR::MemoryReference  * mr, TR::Register * reg1, TR::RegisterDependencyConditions  *deps, TR::CodeGenerator *cg);
-TR::X86MemRegInstruction  * generateMemRegInstruction(TR::InstOpCode::Mnemonic op, TR::Node *, TR::MemoryReference  * mr, TR::Register * reg1, TR::CodeGenerator *cg);
+TR::X86MemRegInstruction  * generateMemRegInstruction(TR::Instruction *precedingInstruction, TR::InstOpCode::Mnemonic op, TR::MemoryReference  *mr, TR::Register *sreg, TR::CodeGenerator *cg, OMR::X86::Encoding encoding = OMR::X86::Default);
+TR::X86MemRegInstruction  * generateMemRegInstruction(TR::InstOpCode::Mnemonic op, TR::Node *, TR::MemoryReference  * mr, TR::Register * reg1, TR::RegisterDependencyConditions  *deps, TR::CodeGenerator *cg, OMR::X86::Encoding encoding = OMR::X86::Default);
+TR::X86MemRegInstruction  * generateMemRegInstruction(TR::InstOpCode::Mnemonic op, TR::Node *, TR::MemoryReference  * mr, TR::Register * reg1, TR::CodeGenerator *cg, OMR::X86::Encoding encoding = OMR::X86::Default);
 TR::X86ImmSymInstruction  * generateImmSymInstruction(TR::InstOpCode::Mnemonic op, TR::Node *, int32_t imm, TR::SymbolReference *, TR::RegisterDependencyConditions  *, TR::CodeGenerator *cg);
 TR::X86ImmSymInstruction  * generateImmSymInstruction(TR::InstOpCode::Mnemonic op, TR::Node *, int32_t imm, TR::SymbolReference *, TR::CodeGenerator *cg);
 TR::X86ImmSymInstruction  * generateImmSymInstruction(TR::Instruction *prev, TR::InstOpCode::Mnemonic op, int32_t imm, TR::SymbolReference *, TR::RegisterDependencyConditions  *, TR::CodeGenerator *cg);
 TR::X86ImmSymInstruction  * generateImmSymInstruction(TR::Instruction *prev, TR::InstOpCode::Mnemonic op, int32_t imm, TR::SymbolReference *, TR::CodeGenerator *cg);
 
-TR::X86RegRegRegInstruction  * generateRegRegRegInstruction(TR::InstOpCode::Mnemonic op, TR::Node *, TR::Register * reg1, TR::Register * reg2, TR::Register * reg3, TR::RegisterDependencyConditions  *deps, TR::CodeGenerator *cg);
-TR::X86RegRegRegInstruction  * generateRegRegRegInstruction(TR::InstOpCode::Mnemonic op, TR::Node *, TR::Register * reg1, TR::Register * reg2, TR::Register * reg3, TR::CodeGenerator *cg);
-TR::X86RegRegMemInstruction  * generateRegRegMemInstruction(TR::InstOpCode::Mnemonic op, TR::Node *, TR::Register * reg1, TR::Register * reg2, TR::MemoryReference  * mr, TR::RegisterDependencyConditions  *deps, TR::CodeGenerator *cg);
-TR::X86RegRegMemInstruction  * generateRegRegMemInstruction(TR::InstOpCode::Mnemonic op, TR::Node *, TR::Register * reg1, TR::Register * reg2, TR::MemoryReference  * mr, TR::CodeGenerator *cg);
+TR::X86RegRegRegInstruction  * generateRegRegRegInstruction(TR::InstOpCode::Mnemonic op, TR::Node *, TR::Register * reg1, TR::Register * reg2, TR::Register * reg3, TR::RegisterDependencyConditions  *deps, TR::CodeGenerator *cg, OMR::X86::Encoding encoding = OMR::X86::Default);
+TR::X86RegRegRegInstruction  * generateRegRegRegInstruction(TR::InstOpCode::Mnemonic op, TR::Node *, TR::Register * reg1, TR::Register * reg2, TR::Register * reg3, TR::CodeGenerator *cg, OMR::X86::Encoding encoding = OMR::X86::Default);
+TR::X86RegRegMemInstruction  * generateRegRegMemInstruction(TR::InstOpCode::Mnemonic op, TR::Node *, TR::Register * reg1, TR::Register * reg2, TR::MemoryReference  * mr, TR::RegisterDependencyConditions  *deps, TR::CodeGenerator *cg, OMR::X86::Encoding encoding = OMR::X86::Default);
+TR::X86RegRegMemInstruction  * generateRegRegMemInstruction(TR::InstOpCode::Mnemonic op, TR::Node *, TR::Register * reg1, TR::Register * reg2, TR::MemoryReference  * mr, TR::CodeGenerator *cg, OMR::X86::Encoding encoding = OMR::X86::Default);
 
 TR::X86ImmSnippetInstruction  * generateImmSnippetInstruction(TR::InstOpCode::Mnemonic op, TR::Node *, int32_t imm, TR::UnresolvedDataSnippet *, TR::CodeGenerator *cg);
 
