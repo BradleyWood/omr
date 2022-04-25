@@ -75,11 +75,22 @@ TR::Register* OMR::X86::TreeEvaluator::SIMDloadEvaluator(TR::Node* node, TR::Cod
    tempMR = ConvertToPatchableMemoryReference(tempMR, node, cg);
    TR::Register* resultReg = cg->allocateRegister(TR_VRF);
 
-   TR::InstOpCode::Mnemonic opCode = TR::InstOpCode::bad;
+   TR::InstOpCode::Mnemonic opCode = TR::InstOpCode::MOVDQURegMem;
+   OMR::X86::Encoding enc = OMR::X86::Legacy;
+
    switch (node->getSize())
       {
       case 16:
-         opCode = TR::InstOpCode::MOVDQURegMem;
+         if (cg->comp()->target().cpu.supportsAVX())
+            enc = VEX_L128;
+         break;
+      case 32:
+         TR_ASSERT_FATAL(cg->comp()->target().cpu.supportsAVX(), "movdqu ymm0, ymm1 requires AVX support");
+         enc = VEX_L256;
+         break;
+      case 64:
+         TR_ASSERT_FATAL(cg->comp()->target().cpu.supportsFeature(OMR_FEATURE_X86_AVX512F), "movdqu zmm0, zmm1 requires AVX-512 support");
+         enc = EVEX_L512;
          break;
       default:
          if (cg->comp()->getOption(TR_TraceCG))
@@ -88,11 +99,14 @@ TR::Register* OMR::X86::TreeEvaluator::SIMDloadEvaluator(TR::Node* node, TR::Cod
          break;
       }
 
-   TR::Instruction* instr = generateRegMemInstruction(opCode, node, resultReg, tempMR, cg);
+   TR::Instruction* instr = generateRegMemInstruction(opCode, node, resultReg, tempMR, cg, enc);
+
    if (node->getOpCode().isIndirect())
       cg->setImplicitExceptionPoint(instr);
+
    node->setRegister(resultReg);
    tempMR->decNodeReferenceCounts(cg);
+
    return resultReg;
    }
 

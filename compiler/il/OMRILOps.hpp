@@ -39,6 +39,8 @@ enum VectorOperation
    {
    vadd,
    vfma,
+   vload,
+   vloadi,
    NumVectorOperations
    };
 
@@ -1361,14 +1363,18 @@ public:
          case TR::lload:
          case TR::fload:
          case TR::dload:
-            return TR::vload;
+             return ILOpCode::createVectorOpCode(OMR::vload,
+                                                 TR::DataType::createVectorType(opcode.getDataType().getDataType(),
+                                                                                vectorLength)).getOpCodeValue();
          case TR::bloadi:
          case TR::sloadi:
          case TR::iloadi:
          case TR::lloadi:
          case TR::floadi:
          case TR::dloadi:
-            return TR::vloadi;
+             return ILOpCode::createVectorOpCode(OMR::vloadi,
+                                                 TR::DataType::createVectorType(opcode.getDataType().getDataType(),
+                                                                                vectorLength)).getOpCodeValue();
          case TR::bstore:
          case TR::sstore:
          case TR::istore:

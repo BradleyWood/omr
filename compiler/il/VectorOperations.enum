@@ -51,3 +51,35 @@ VECTOR_OPERATION_MACRO(\
    /* .ifCompareOpCode      = */ TR::BadILOp, \
    /* .description          =    vector fused multiply and add */ \
 )
+VECTOR_OPERATION_MACRO(\
+   /* .opcode               = */ vload, \
+   /* .name                 = */ "vload", \
+   /* .properties1          = */ ILProp1::LoadVar | ILProp1::HasSymbolRef, \
+   /* .properties2          = */ ILProp2::ValueNumberShare | ILProp2::SupportedForPRE| ILProp2::MayUseSystemStack, \
+   /* .properties3          = */ ILProp3::LikeUse, \
+   /* .properties4          = */ 0, \
+   /* .dataType             = */ TR::NoType, \
+   /* .typeProperties       = */ ILTypeProp::Vector, \
+   /* .childProperties      = */ ILChildProp::NoChildren, \
+   /* .swapChildrenOpCode   = */ TR::BadILOp, \
+   /* .reverseBranchOpCode  = */ TR::BadILOp, \
+   /* .booleanCompareOpCode = */ TR::BadILOp, \
+   /* .ifCompareOpCode      = */ TR::BadILOp, \
+   /* .description          =    load vector */ \
+)
+VECTOR_OPERATION_MACRO(\
+   /* .opcode               = */ vloadi, \
+   /* .name                 = */ "vloadi", \
+   /* .properties1          = */ ILProp1::LoadVar | ILProp1::Indirect | ILProp1::HasSymbolRef, \
+   /* .properties2          = */ ILProp2::ValueNumberShare | ILProp2::SupportedForPRE| ILProp2::MayUseSystemStack, \
+   /* .properties3          = */ ILProp3::LikeUse, \
+   /* .properties4          = */ 0, \
+   /* .dataType             = */ TR::NoType, \
+   /* .typeProperties       = */ ILTypeProp::Vector, \
+   /* .childProperties      = */ ONE_CHILD(ILChildProp::UnspecifiedChildType), \
+   /* .swapChildrenOpCode   = */ TR::BadILOp, \
+   /* .reverseBranchOpCode  = */ TR::BadILOp, \
+   /* .booleanCompareOpCode = */ TR::BadILOp, \
+   /* .ifCompareOpCode      = */ TR::BadILOp, \
+   /* .description          =    load indirect vector */ \
+)

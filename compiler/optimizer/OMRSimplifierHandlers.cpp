@@ -5580,7 +5580,12 @@ TR::Node *indirectLoadSimplifier(TR::Node * node, TR::Block * block, TR::Simplif
 
          TR::SymbolReference *newSymRef = s->comp()->getSymRefTab()->createSymbolReference(
                TR::Symbol::createShadow(s->comp()->trHeapMemory(), addressNode->getSymbol()->getDataType()), 0);
-         TR::Node *vloadiNode = TR::Node::createWithSymRef(TR::vloadi, 1, 1, addressNode, newSymRef);
+
+         TR::ILOpCodes opcode = OMR::ILOpCode::createVectorOpCode(OMR::vloadi,
+                                                                  TR::DataType::createVectorType(addressNode->getSymbol()->getDataType().getDataType(),
+                                                                  TR::VectorLength128)).getOpCodeValue();
+
+         TR::Node *vloadiNode = TR::Node::createWithSymRef(opcode, 1, 1, addressNode, newSymRef);
          TR::Node *indexNode = TR::Node::iconst(offset/(node->getSize()));
 
          TR::Node *getvelemNode = TR::Node::create(TR::getvelem, 2, vloadiNode, indexNode);
@@ -5746,9 +5751,14 @@ TR::Node *indirectStoreSimplifier(TR::Node * node, TR::Block * block, TR::Simpli
             }
 
          TR::SymbolReference *newSymRef = s->comp()->getSymRefTab()->createSymbolReference(TR::Symbol::createShadow(s->comp()->trHeapMemory(), addressNode->getSymbol()->getDataType()), 0);
-         TR::Node *vloadiNode = TR::Node::createWithSymRef(TR::vloadi, 1, 1, addressNode, newSymRef);
+         TR::ILOpCodes opcode = OMR::ILOpCode::createVectorOpCode(OMR::vloadi,
+                                                                  TR::DataType::createVectorType(addressNode->getSymbol()->getDataType().getDataType(),
+                                                                  TR::VectorLength128)).getOpCodeValue();
+
+         TR::Node *vloadiNode = TR::Node::createWithSymRef(opcode, 1, 1, addressNode, newSymRef);
          TR::Node *indexNode = TR::Node::iconst(offset/(node->getSize()));   // idx = byte offset / element size
          TR::Node *vsetelemNode = TR::Node::create(TR::vsetelem, 3, vloadiNode, indexNode, valueNode);
+
          auto newVStorei = TR::Node::createWithSymRef(TR::vstorei, 2, 2, addressNode, vsetelemNode, newSymRef);
          dumpOptDetails(s->comp(),"[" POINTER_PRINTF_FORMAT "]\n", newVStorei);
          s->replaceNode(node, newVStorei, s->_curTree);

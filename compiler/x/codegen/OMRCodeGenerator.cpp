@@ -998,11 +998,28 @@ OMR::X86::CodeGenerator::getSupportsOpCodeForAutoSIMD(TR::ILOpCode opcode, TR::D
       {
       TR::DataType ot = opcode.getVectorResultDataType();
 
-      if (ot.getVectorLength() != TR::VectorLength128) return false;
+      switch (ot.getVectorLength())
+         {
+         case TR::VectorLength512:
+            if (!self()->comp()->target().cpu.supportsFeature(OMR_FEATURE_X86_AVX512F))
+               return false;
+         case TR::VectorLength256:
+            if (!self()->comp()->target().cpu.supportsAVX())
+               return false;
+         case TR::VectorLength128:
+               break;
+         default:
+             return false;
+         }
 
       switch (opcode.getVectorOperation())
          {
          case OMR::vadd:
+            if (ot.getVectorLength() == TR::VectorLength256)
+                return self()->comp()->target().cpu.supportsFeature(OMR_FEATURE_X86_AVX2);
+            return true;
+         case OMR::vload:
+         case OMR::vloadi:
             return true;
          default:
             return false;
@@ -1044,8 +1061,6 @@ OMR::X86::CodeGenerator::getSupportsOpCodeForAutoSIMD(TR::ILOpCode opcode, TR::D
               return true;
           else
               return false;
-      case TR::vload:
-      case TR::vloadi:
       case TR::vstore:
       case TR::vstorei:
       case TR::vsplats:

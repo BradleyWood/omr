@@ -6772,38 +6772,6 @@ OPCODE_MACRO(\
    /* .description          =    vector compare greater or equal */ \
 )
 OPCODE_MACRO(\
-   /* .opcode               = */ vload, \
-   /* .name                 = */ "vload", \
-   /* .properties1          = */ ILProp1::LoadVar | ILProp1::HasSymbolRef, \
-   /* .properties2          = */ ILProp2::ValueNumberShare | ILProp2::SupportedForPRE| ILProp2::MayUseSystemStack, \
-   /* .properties3          = */ ILProp3::LikeUse, \
-   /* .properties4          = */ 0, \
-   /* .dataType             = */ TR::NoType, \
-   /* .typeProperties       = */ ILTypeProp::Size_16 | ILTypeProp::Vector | ILTypeProp::HasNoDataType, \
-   /* .childProperties      = */ ILChildProp::NoChildren, \
-   /* .swapChildrenOpCode   = */ TR::BadILOp, \
-   /* .reverseBranchOpCode  = */ TR::BadILOp, \
-   /* .booleanCompareOpCode = */ TR::BadILOp, \
-   /* .ifCompareOpCode      = */ TR::BadILOp, \
-   /* .description          =    load vector */ \
-)
-OPCODE_MACRO(\
-   /* .opcode               = */ vloadi, \
-   /* .name                 = */ "vloadi", \
-   /* .properties1          = */ ILProp1::LoadVar | ILProp1::Indirect | ILProp1::HasSymbolRef, \
-   /* .properties2          = */ ILProp2::ValueNumberShare | ILProp2::SupportedForPRE| ILProp2::MayUseSystemStack, \
-   /* .properties3          = */ ILProp3::LikeUse, \
-   /* .properties4          = */ 0, \
-   /* .dataType             = */ TR::NoType, \
-   /* .typeProperties       = */ ILTypeProp::Size_16 | ILTypeProp::Vector | ILTypeProp::HasNoDataType, \
-   /* .childProperties      = */ ONE_CHILD(ILChildProp::UnspecifiedChildType), \
-   /* .swapChildrenOpCode   = */ TR::BadILOp, \
-   /* .reverseBranchOpCode  = */ TR::BadILOp, \
-   /* .booleanCompareOpCode = */ TR::BadILOp, \
-   /* .ifCompareOpCode      = */ TR::BadILOp, \
-   /* .description          =    load indirect vector */ \
-)
-OPCODE_MACRO(\
    /* .opcode               = */ vstore, \
    /* .name                 = */ "vstore", \
    /* .properties1          = */ ILProp1::Store | ILProp1::TreeTop | ILProp1::HasSymbolRef, \
