@@ -72,3 +72,14 @@
    xmm14Mask         = 0x00004000 << XMMRMaskOffset,
    xmm15Mask         = 0x00008000 << XMMRMaskOffset,
    AvailableXMMRMask = 0x0000FFFF << XMMRMaskOffset,
+
+   // Vector write masks
+   k0Mask            = 0x00000001,
+   k1Mask            = 0x00000002,
+   k2Mask            = 0x00000004,
+   k3Mask            = 0x00000008,
+   k4Mask            = 0x00000010,
+   k5Mask            = 0x00000020,
+   k6Mask            = 0x00000040,
+   k7Mask            = 0x00000080,
+   AvailableKMask    = 0x000000FF,

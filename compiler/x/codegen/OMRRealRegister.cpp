@@ -51,6 +51,8 @@ OMR::X86::RealRegister::getAvailableRegistersMask(TR_RegisterKinds rk)
       return TR::RealRegister::AvailableFPRMask;
    else if (rk == TR_FPR || rk == TR_VRF)
       return TR::RealRegister::AvailableXMMRMask;
+   else if (rk == TR_VMR)
+      return TR::RealRegister::AvailableKMask;
    else // MMX: not used
       return 0;
    }
@@ -64,6 +66,8 @@ OMR::X86::RealRegister::getRealRegisterMask(TR_RegisterKinds rk, TR::RealRegiste
       return TR::RealRegister::fprMask(idx);
    else if (rk == TR_FPR || rk == TR_VRF)
       return TR::RealRegister::xmmrMask(idx);
+   else if (rk == TR_VMR)
+      return TR::RealRegister::vectorMaskMask(idx);
    else
       TR_ASSERT_FATAL(false, "Unknown register kind");
    }

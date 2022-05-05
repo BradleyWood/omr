@@ -63,7 +63,7 @@ struct X86LinkageProperties
       {
       MaxArgumentRegisters = 30,
       MaxReturnRegisters   = 3,
-      MaxVolatileRegisters = 30,
+      MaxVolatileRegisters = 38,
       MaxScratchRegisters  = 5
       };
 
