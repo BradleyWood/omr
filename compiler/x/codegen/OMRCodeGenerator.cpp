@@ -342,8 +342,8 @@ OMR::X86::CodeGenerator::initializeX86(TR::Compilation *comp)
       vmThreadReal->setState(TR::RealRegister::Assigned);
       }
 
-   if (!debug("disableBetterSpillPlacements"))
-      self()->setEnableBetterSpillPlacements();
+//   if (!debug("disableBetterSpillPlacements"))
+//      self()->setEnableBetterSpillPlacements();
 
    self()->setEnableRematerialisation();
    self()->setEnableRegisterAssociations();
