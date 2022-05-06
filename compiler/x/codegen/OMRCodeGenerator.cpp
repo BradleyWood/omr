@@ -345,10 +345,10 @@ OMR::X86::CodeGenerator::initializeX86(TR::Compilation *comp)
    if (!debug("disableBetterSpillPlacements"))
       self()->setEnableBetterSpillPlacements();
 
-   self()->setEnableRematerialisation();
-   self()->setEnableRegisterAssociations();
-   self()->setEnableRegisterWeights();
-   self()->setEnableRegisterInterferences();
+//   self()->setEnableRematerialisation();
+//   self()->setEnableRegisterAssociations();
+//   self()->setEnableRegisterWeights();
+//   self()->setEnableRegisterInterferences();
 
    self()->setEnableSinglePrecisionMethods();
 
