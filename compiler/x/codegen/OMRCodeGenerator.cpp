@@ -1029,37 +1029,37 @@ OMR::X86::CodeGenerator::getSupportsOpCodeForAutoSIMD(TR::ILOpCode opcode, TR::D
 
    TR::DataType ot = opcode.getVectorResultDataType();
 
-   if (ot.getVectorLength() != TR::VectorLength128) return false;
-
    TR::DataType et = ot.getVectorElementType();
 
    switch (opcode.getVectorOperation())
       {
       case OMR::vadd:
       case OMR::vsub:
+         if (ot.getVectorLength() != TR::VectorLength128) return false;
          if (et == TR::Int8 || et == TR::Int16 || et == TR::Int32 || et == TR::Int64 || et == TR::Float || et == TR::Double)
             return true;
          else
             return false;
       case OMR::vmul:
+         if (ot.getVectorLength() != TR::VectorLength128) return false;
          TR_ASSERT_FATAL(self()->comp()->compileRelocatableCode() || self()->comp()->isOutOfProcessCompilation() || self()->comp()->compilePortableCode() || self()->getX86ProcessorInfo().supportsSSE4_1() == self()->comp()->target().cpu.supportsFeature(OMR_FEATURE_X86_SSE4_1), "supportsSSE4_1() failed\n");
          if (et == TR::Float || et == TR::Double || (et == TR::Int32 && self()->comp()->target().cpu.supportsFeature(OMR_FEATURE_X86_SSE4_1)))
             return true;
          else
             return false;
       case OMR::vdiv:
+         if (ot.getVectorLength() != TR::VectorLength128) return false;
          if (et == TR::Float || et == TR::Double)
             return true;
          else
             return false;
       case OMR::vneg:
-         if (et == TR::Int8 || et == TR::Int16 || et == TR::Int32 || et == TR::Int64 || et == TR::Float || et == TR::Double)
-            return true;
-         else
-            return false;
+         if (ot.getVectorLength() == TR::VectorLength128)
+             return true;
       case OMR::vxor:
       case OMR::vor:
       case OMR::vand:
+         if (ot.getVectorLength() != TR::VectorLength128) return false;
          if (et == TR::Int32 || et == TR::Int64)
             return true;
          else
@@ -1068,7 +1068,21 @@ OMR::X86::CodeGenerator::getSupportsOpCodeForAutoSIMD(TR::ILOpCode opcode, TR::D
       case OMR::vloadi:
       case OMR::vstore:
       case OMR::vstorei:
+         switch (ot.getVectorLength())
+            {
+            case TR::VectorLength512:
+               if (!self()->comp()->target().cpu.supportsFeature(OMR_FEATURE_X86_AVX512F))
+                  return false;
+            case TR::VectorLength256:
+               if (!self()->comp()->target().cpu.supportsAVX())
+                  return false;
+            case TR::VectorLength128:
+                return true;
+            default:
+                return false;
+            }
       case OMR::vsplats:
+         if (ot.getVectorLength() != TR::VectorLength128) return false;
          if (et == TR::Int32 || et == TR::Int64 || et == TR::Float || et == TR::Double)
             return true;
          else
