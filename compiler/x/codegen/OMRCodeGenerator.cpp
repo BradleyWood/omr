@@ -1028,42 +1028,21 @@ OMR::X86::CodeGenerator::getSupportsOpCodeForAutoSIMD(TR::ILOpCode opcode, TR::D
       }
 
    TR::DataType ot = opcode.getVectorResultDataType();
-
    TR::DataType et = ot.getVectorElementType();
+   TR::InstOpCode nativeOpcode = TR::TreeEvaluator::getNativeSIMDOpcode(opcode.getOpCodeValue(), ot, false);
 
+   if (nativeOpcode.getMnemonic() != TR::InstOpCode::bad)
+      {
+      if (nativeOpcode.getBestEncoding(comp()->target().cpu, ot.getVectorLength()) != Bad)
+         return true;
+      }
+
+   /* Special cases */
    switch (opcode.getVectorOperation())
       {
-      case OMR::vadd:
-      case OMR::vsub:
-         if (ot.getVectorLength() != TR::VectorLength128) return false;
-         if (et == TR::Int8 || et == TR::Int16 || et == TR::Int32 || et == TR::Int64 || et == TR::Float || et == TR::Double)
-            return true;
-         else
-            return false;
-      case OMR::vmul:
-         if (ot.getVectorLength() != TR::VectorLength128) return false;
-         TR_ASSERT_FATAL(self()->comp()->compileRelocatableCode() || self()->comp()->isOutOfProcessCompilation() || self()->comp()->compilePortableCode() || self()->getX86ProcessorInfo().supportsSSE4_1() == self()->comp()->target().cpu.supportsFeature(OMR_FEATURE_X86_SSE4_1), "supportsSSE4_1() failed\n");
-         if (et == TR::Float || et == TR::Double || (et == TR::Int32 && self()->comp()->target().cpu.supportsFeature(OMR_FEATURE_X86_SSE4_1)))
-            return true;
-         else
-            return false;
-      case OMR::vdiv:
-         if (ot.getVectorLength() != TR::VectorLength128) return false;
-         if (et == TR::Float || et == TR::Double)
-            return true;
-         else
-            return false;
       case OMR::vneg:
          if (ot.getVectorLength() == TR::VectorLength128)
              return true;
-      case OMR::vxor:
-      case OMR::vor:
-      case OMR::vand:
-         if (ot.getVectorLength() != TR::VectorLength128) return false;
-         if (et == TR::Int32 || et == TR::Int64)
-            return true;
-         else
-            return false;
       case OMR::vload:
       case OMR::vloadi:
       case OMR::vstore:

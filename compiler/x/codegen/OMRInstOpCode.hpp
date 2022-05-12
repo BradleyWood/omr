@@ -34,6 +34,8 @@ namespace OMR { typedef OMR::X86::InstOpCode InstOpCodeConnector; }
 #endif
 
 #include "compiler/codegen/OMRInstOpCode.hpp"
+#include "env/CPU.hpp"
+#include "il/OMRDataTypes.hpp"
 
 namespace TR { class CodeGenerator; }
 namespace TR { class Register; }
@@ -138,6 +140,39 @@ namespace TR { class Register; }
                                            IA32OpProp_ModifiesCarryFlag    | \
                                            IA32OpProp_ModifiesOverflowFlag)
 
+// Flags for SIMD opcode encoding support, and required CPU feature flags.
+// These flags will be added to SIMD opcodes and can be queried to verify
+// vector operation support.
+
+// SSE forms (2-operands)
+
+#define IA32OpProp2_SSE2Supported             0x00000001 // ISA supports instruction with SSE2
+#define IA32OpProp2_SSE3Supported             0x00000002 // ISA supports instruction with SSE3
+#define IA32OpProp2_SSE4Supported             0x00000004 // ISA supports instruction with SSE4
+#define IA32OpProp2_SSE4_1Supported           0x00000008 // ISA supports instruction with SSE4.1
+#define IA32OpProp2_VEX128Supported           0x00000010 // ISA supports VEX-128 encoded version
+
+// VEX/EVEX forms (3-operands, except move instructions, etc.)
+
+#define IA32OpProp2_VEX128RequiresAVX         0x00000020 // VEX-128 encoded version requires AVX
+#define IA32OpProp2_VEX128RequiresAVX2        0x00000040 // VEX-128 encoded version requires AVX
+#define IA32OpProp2_VEX256Supported           0x00000080 // VEX-256 encoded version requires AVX2
+#define IA32OpProp2_VEX256RequiresAVX         0x00000100 // VEX-256 encoded version requires AVX
+#define IA32OpProp2_VEX256RequiresAVX2        0x00000200 // VEX-256 encoded version requires AVX2
+#define IA32OpProp2_EVEX128Supported          0x00000400 // ISA supports EVEX-128 encoded version
+#define IA32OpProp2_EVEX128RequiresAVX512     0x00000800 // EVEX-128 encoded version requires AVX-512F
+#define IA32OpProp2_EVEX128RequiresAVX512VL   0x00001000 // EVEX-128 encoded version requires AVX-512VL
+#define IA32OpProp2_EVEX128RequiresAVX512BW   0x00002000 // EVEX-128 encoded version requires AVX-512BW
+#define IA32OpProp2_EVEX128RequiresAVX512DQ   0x00004000 // EVEX-128 encoded version requires AVX-512DQ
+#define IA32OpProp2_EVEX256Supported          0x00008000 // ISA supports EVEX-256 encoded version
+#define IA32OpProp2_EVEX256RequiresAVX512F    0x00010000 // EVEX-256 encoded version requires AVX-512F
+#define IA32OpProp2_EVEX256RequiresAVX512VL   0x00020000 // EVEX-256 encoded version requires AVX-512VL
+#define IA32OpProp2_EVEX256RequiresAVX512BW   0x00040000 // EVEX-256 encoded version requires AVX-512BW
+#define IA32OpProp2_EVEX256RequiresAVX512DQ   0x00080000 // EVEX-256 encoded version requires AVX-512DQ
+#define IA32OpProp2_EVEX512Supported          0x00100000 // ISA supports EVEX-512 encoded version
+#define IA32OpProp2_EVEX512RequiresAVX512F    0x00200000 // EVEX-512 encoded version requires AVX-512DF
+#define IA32OpProp2_EVEX512RequiresAVX512BW   0x00400000 // EVEX-512 encoded version requires AVX-512DBW
+#define IA32OpProp2_EVEX512RequiresAVX512DQ   0x00800000 // EVEX-512 encoded version requires AVX-512DDQ
 
 typedef enum
    {
@@ -163,7 +198,8 @@ typedef enum
    Legacy   = 0x3,
    EVEX_L128 = 0x4,
    EVEX_L256 = 0x5,
-   EVEX_L512 = 0x6
+   EVEX_L512 = 0x6,
+   Bad       = 0x7
    } Encoding;
 
 class InstOpCode: public OMR::InstOpCode
@@ -425,6 +461,178 @@ class InstOpCode: public OMR::InstOpCode
    inline uint32_t sourceRegIsImplicit()           const { return _properties1[_mnemonic] & IA32OpProp1_SourceRegIsImplicit;}
    inline uint32_t isFusableCompare()              const { return _properties1[_mnemonic] & IA32OpProp1_FusableCompare; }
    inline bool     isEvexInstruction()             const { return _binaries[_mnemonic].vex_l >> 2 == 1; }
+
+   static uint32_t getFeatureHints(Mnemonic opcode) {
+       uint32_t features = 0;
+
+       // Legacy SSE
+       switch (opcode) {
+           case MOVDQURegMem: case MOVDQUMemReg: case MOVDQURegReg:
+           case PSUBBRegMem:  case PSUBBRegReg:  case PSUBWRegMem: case PSUBWRegReg: case PSUBDRegMem: case PSUBDRegReg:
+           case PSUBQRegMem:  case PSUBQRegReg:  case SUBPSRegMem: case SUBPSRegReg: case SUBPDRegMem: case SUBPDRegReg:
+           case PADDBRegMem:  case PADDBRegReg:  case PADDWRegMem: case PADDWRegReg: case PADDDRegMem: case PADDDRegReg:
+           case PADDQRegMem:  case PADDQRegReg:  case ADDPSRegMem: case ADDPSRegReg: case ADDPDRegMem: case ADDPDRegReg:
+           case DIVPSRegMem:  case DIVPSRegReg:  case DIVPDRegMem: case DIVPDRegReg:
+           case PMULLWRegMem: case PMULLWRegReg:
+           case MULPDRegMem:  case MULPDRegReg:
+           case MULPSRegMem:  case MULPSRegReg:
+           case PANDRegMem:   case PANDRegReg:
+           case PORRegMem:    case PORRegReg:
+           case PXORRegMem:   case PXORRegReg:
+               features |= IA32OpProp2_SSE2Supported;
+               break;
+           case PMULLDRegMem: case PMULLDRegReg:
+               features |= IA32OpProp2_SSE4_1Supported;
+
+           default:
+               break;
+       }
+
+       // VEX
+       switch (opcode) {
+           case VMOVDQUMemYmm: case VMOVDQUYmmYmm:
+               features |= IA32OpProp2_VEX256Supported | IA32OpProp2_VEX256RequiresAVX;
+               break;
+           case MOVDQURegMem: case MOVDQUMemReg: case MOVDQURegReg: case VMOVDQUYmmMem:
+           case MULPDRegMem:  case MULPDRegReg:
+           case MULPSRegMem: case MULPSRegReg:
+               features |= IA32OpProp2_VEX128Supported | IA32OpProp2_VEX128RequiresAVX | IA32OpProp2_VEX256Supported | IA32OpProp2_VEX256RequiresAVX;
+               break;
+           case PSUBBRegMem: case PSUBBRegReg: case PSUBWRegMem: case PSUBWRegReg: case PSUBDRegMem: case PSUBDRegReg:
+           case PSUBQRegMem: case PSUBQRegReg: case SUBPSRegMem: case SUBPSRegReg: case SUBPDRegMem: case SUBPDRegReg:
+           case PADDBRegMem: case PADDBRegReg: case PADDWRegMem: case PADDWRegReg: case PADDDRegMem: case PADDDRegReg:
+           case PADDQRegMem: case PADDQRegReg: case ADDPSRegMem: case ADDPSRegReg: case ADDPDRegMem: case ADDPDRegReg:
+           case DIVPSRegMem: case DIVPSRegReg: case DIVPDRegMem: case DIVPDRegReg:
+           case PANDRegMem:  case PANDRegReg:
+           case PORRegMem:   case PORRegReg:
+           case PXORRegMem:  case PXORRegReg:
+           case PMULLWRegMem: case PMULLWRegReg:
+           case PMULLDRegMem: case PMULLDRegReg:
+               features |= IA32OpProp2_VEX128Supported | IA32OpProp2_VEX128RequiresAVX | IA32OpProp2_VEX256Supported | IA32OpProp2_VEX256RequiresAVX2;
+               break;
+           default:
+               break;
+       }
+
+       // EVEX
+       switch (opcode) {
+           case MOVDQURegMem: case MOVDQUMemReg: case MOVDQURegReg:
+           case PSUBDRegMem:  case PSUBDRegReg:  case PSUBQRegMem:  case PSUBQRegReg:
+           case SUBPSRegMem:  case SUBPSRegReg: case SUBPDRegMem: case SUBPDRegReg:
+           case PADDDRegMem:  case PADDDRegReg: case PADDQRegMem:  case PADDQRegReg:
+           case ADDPSRegMem:  case ADDPSRegReg: case ADDPDRegMem: case ADDPDRegReg:
+           case DIVPSRegMem:  case DIVPSRegReg: case DIVPDRegMem: case DIVPDRegReg:
+           case MULPSRegMem:  case MULPSRegReg:
+           case MULPDRegMem:  case MULPDRegReg:
+           case PANDRegMem:   case PANDRegReg:
+           case PORRegMem:    case PORRegReg:
+           case PXORRegMem:   case PXORRegReg:
+           case PMULLDRegMem: case PMULLDRegReg:
+               features |= IA32OpProp2_EVEX128Supported | IA32OpProp2_EVEX128RequiresAVX512 | IA32OpProp2_EVEX128RequiresAVX512VL |
+                       IA32OpProp2_EVEX256Supported | IA32OpProp2_EVEX256RequiresAVX512F | IA32OpProp2_EVEX256RequiresAVX512VL |
+                       IA32OpProp2_EVEX512Supported | IA32OpProp2_EVEX512RequiresAVX512F;
+               break;
+           case PSUBBRegMem:  case PSUBBRegReg:
+           case PSUBWRegMem:  case PSUBWRegReg:
+           case PMULLWRegMem: case PMULLWRegReg:
+           case PADDBRegMem:  case PADDBRegReg: case PADDWRegMem: case PADDWRegReg:
+               features |= IA32OpProp2_EVEX128Supported | IA32OpProp2_EVEX128RequiresAVX512 | IA32OpProp2_EVEX128RequiresAVX512VL | IA32OpProp2_EVEX128RequiresAVX512BW |
+                       IA32OpProp2_EVEX256Supported | IA32OpProp2_EVEX256RequiresAVX512F | IA32OpProp2_EVEX256RequiresAVX512VL | IA32OpProp2_EVEX256RequiresAVX512BW |
+                       IA32OpProp2_EVEX512Supported | IA32OpProp2_EVEX512RequiresAVX512F;
+               break;
+           default:
+               break;
+       }
+
+       return features;
+   }
+
+   OMR::X86::Encoding getBestEncoding(TR::CPU target, TR::VectorLength vl)
+      {
+      uint32_t flags = getFeatureHints(getMnemonic());
+      bool supported;
+
+      switch (vl)
+         {
+         case TR::VectorLength128:
+            if (flags & IA32OpProp2_EVEX128Supported)
+               {
+               supported = target.supportsFeature(OMR_FEATURE_X86_AVX512F);
+
+               if (flags & IA32OpProp2_EVEX128RequiresAVX512VL)
+                  supported = target.supportsFeature(OMR_FEATURE_X86_AVX512VL);
+               if (flags & IA32OpProp2_EVEX128RequiresAVX512BW)
+                  supported = target.supportsFeature(OMR_FEATURE_X86_AVX512BW);
+               if (flags & IA32OpProp2_EVEX128RequiresAVX512DQ)
+                  supported = target.supportsFeature(OMR_FEATURE_X86_AVX512DQ);
+
+               if (supported)
+                    return OMR::X86::EVEX_L128;
+               }
+
+            if (flags & IA32OpProp2_VEX128Supported)
+               {
+               if (flags & IA32OpProp2_VEX128RequiresAVX )
+                  return OMR::X86::VEX_L128;
+               }
+
+            if (flags & IA32OpProp2_SSE4_1Supported && target.supportsFeature(OMR_FEATURE_X86_SSE4_1))
+               return OMR::X86::Legacy;
+
+            if (flags & IA32OpProp2_SSE3Supported && target.supportsFeature(OMR_FEATURE_X86_SSE3))
+               return OMR::X86::Legacy;
+
+            if (flags & IA32OpProp2_SSE2Supported)
+               return OMR::X86::Legacy;
+
+            break;
+         case TR::VectorLength256:
+            if (flags & IA32OpProp2_EVEX256Supported)
+               {
+               supported = target.supportsFeature(OMR_FEATURE_X86_AVX512F);
+
+               if (flags & IA32OpProp2_EVEX256RequiresAVX512VL)
+                  supported = target.supportsFeature(OMR_FEATURE_X86_AVX512VL);
+               if (flags & IA32OpProp2_EVEX256RequiresAVX512BW)
+                  supported = target.supportsFeature(OMR_FEATURE_X86_AVX512BW);
+               if (flags & IA32OpProp2_EVEX256RequiresAVX512DQ)
+                  supported = target.supportsFeature(OMR_FEATURE_X86_AVX512DQ);
+
+               if (supported)
+                  return OMR::X86::EVEX_L256;
+               }
+
+            if (flags & IA32OpProp2_VEX256Supported)
+               {
+               supported = target.supportsFeature(OMR_FEATURE_X86_AVX);
+
+               if (flags & IA32OpProp2_VEX256RequiresAVX2)
+                  supported = target.supportsFeature(OMR_FEATURE_X86_AVX2);
+
+               if (supported)
+                   return OMR::X86::VEX_L256;
+               }
+
+               break;
+         case TR::VectorLength512:
+            supported = flags & IA32OpProp2_EVEX512Supported && target.supportsFeature(OMR_FEATURE_X86_AVX512F);
+
+            if (supported && flags & IA32OpProp2_EVEX512RequiresAVX512BW)
+               supported = target.supportsFeature(OMR_FEATURE_X86_AVX512BW);
+
+            if (supported && flags & IA32OpProp2_EVEX512RequiresAVX512DQ)
+               supported = target.supportsFeature(OMR_FEATURE_X86_AVX512DQ);
+
+            if (supported)
+               return OMR::X86::EVEX_L512;
+
+            break;
+         default:
+            break;
+         }
+
+      return OMR::X86::Encoding::Bad;
+      }
 
    inline bool isSetRegInstruction() const
       {

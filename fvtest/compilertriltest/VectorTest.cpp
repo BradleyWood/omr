@@ -105,6 +105,41 @@ INSTANTIATE_TEST_CASE_P(VLoadStoreVectorTest, ParameterizedVectorTest, ::testing
     std::make_tuple(TR::VectorLength512, TR::Double)
 )));
 
+TEST_F(VectorTest, VDoubleAdd2) {
+    auto inputTrees = "(method return= NoType args=[Address,Address,Address]           "
+                      "  (block                                                        "
+                      "     (vstoreiVector256Double  offset=0                          "
+                      "         (aload parm=0)                                         "
+                      "            (vaddVector256Double                                "
+                      "                 (vloadiVector256Double (aload parm=1))         "
+                      "                 (vloadiVector256Double (aload parm=2))))       "
+                      "     (return)))                                                 ";
+
+    auto trees = parseString(inputTrees);
+
+    ASSERT_NOTNULL(trees);
+    //TODO: Re-enable this test on S390 after issue #1843 is resolved.
+    SKIP_ON_S390(KnownBug) << "This test is currently disabled on Z platforms because not all Z platforms have vector support (issue #1843)";
+    SKIP_ON_S390X(KnownBug) << "This test is currently disabled on Z platforms because not all Z platforms have vector support (issue #1843)";
+    SKIP_ON_RISCV(MissingImplementation);
+
+    Tril::DefaultCompiler compiler(trees);
+    ASSERT_EQ(0, compiler.compile()) << "Compilation failed unexpectedly\n" << "Input trees: " << inputTrees;
+
+
+    auto entry_point = compiler.getEntryPoint<void (*)(double[],double[],double[])>();
+
+    double output[] =  {0.0, 0.0, 0.0, 0.0};
+    double inputA[] =  {1.0, 2.0, 3.0, 4.0};
+    double inputB[] =  {1.0, 2.0, 3.0, 4.0};
+
+    entry_point(output,inputA,inputB);
+    EXPECT_DOUBLE_EQ(inputA[0] + inputB[0], output[0]);
+    EXPECT_DOUBLE_EQ(inputA[1] + inputB[1], output[1]);
+    EXPECT_DOUBLE_EQ(inputA[2] + inputB[2], output[2]);
+    EXPECT_DOUBLE_EQ(inputA[3] + inputB[3], output[3]);
+}
+
 TEST_F(VectorTest, VDoubleAdd) {
 
    auto inputTrees = "(method return= NoType args=[Address,Address,Address]           "

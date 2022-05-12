@@ -36,6 +36,15 @@
 
 extern TR::Register *intOrLongClobberEvaluate(TR::Node *node, bool nodeIs64Bit, TR::CodeGenerator *cg);
 
+enum UnaryArithmeticOps
+   {
+   UnaryArithmeticNeg,
+   UnaryArithmeticSqrt,
+   UnaryArithmeticMin,
+   UnaryArithmeticMax,
+   UnaryArithmeticABS,
+   };
+
 TR::Register *OMR::X86::TreeEvaluator::unaryVectorArithmeticEvaluator(TR::Node *node, TR::CodeGenerator *cg)
    {
    TR::Node *valueNode = node->getChild(0);

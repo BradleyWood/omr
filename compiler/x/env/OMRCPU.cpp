@@ -560,6 +560,12 @@ OMR::X86::CPU::supports_feature_old_api(uint32_t feature)
       case OMR_FEATURE_X86_TM:
          supported = TR::CodeGenerator::getX86ProcessorInfo().hasThermalMonitor();
          break;
+      case OMR_FEATURE_X86_AVX:
+          supported = TR::CodeGenerator::getX86ProcessorInfo().supportsAVX();
+          break;
+      case OMR_FEATURE_X86_AVX2:
+          supported = TR::CodeGenerator::getX86ProcessorInfo().supportsAVX2();
+          break;
       case OMR_FEATURE_X86_AVX512F:
          supported = TR::CodeGenerator::getX86ProcessorInfo().supportsAVX512F();
          break;

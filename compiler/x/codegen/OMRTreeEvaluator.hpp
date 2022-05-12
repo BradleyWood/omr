@@ -315,6 +315,8 @@ class OMR_EXTENSIBLE TreeEvaluator: public OMR::TreeEvaluator
                                            TR::CodeGenerator *cg,
                                            TR::Instruction *currentInstruction = NULL);
 
+   static TR::InstOpCode getNativeSIMDOpcode(TR::ILOpCodes opcode, TR::DataType et, bool mem);
+
    static void padUnresolvedDataReferences(
       TR::Node            *node,
       TR::SymbolReference &symRef,
