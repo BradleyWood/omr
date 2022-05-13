@@ -259,7 +259,7 @@ void TR::X86LabelInstruction::assignRegisters(TR_RegisterKinds kindsToBeAssigned
    {
    TR::Compilation *comp = cg()->comp();
 
-   if (kindsToBeAssigned & TR_GPR_Mask)
+   if (kindsToBeAssigned & (TR_GPR_Mask | TR_VRF_Mask | TR_FPR_Mask))
       {
       if (getDependencyConditions())
          {

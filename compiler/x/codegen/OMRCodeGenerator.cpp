@@ -1164,8 +1164,10 @@ void OMR::X86::CodeGenerator::saveBetterSpillPlacements(TR::Instruction * branch
    {
    // Get the set of currently-free real registers as a bitmap.
    //
-   int32_t numFreeRealRegisters = 0;
-   uint32_t freeRealRegisters = 0;
+   int32_t numFreeGPRs = 0;
+   uint32_t freeGPRs = 0;
+   int32_t numFreeXMMs = 0;
+   uint32_t freeXMMs = 0;
    int32_t i;
    TR::RealRegister * realReg;
 
@@ -1174,25 +1176,39 @@ void OMR::X86::CodeGenerator::saveBetterSpillPlacements(TR::Instruction * branch
       realReg = self()->machine()->getRealRegister((TR::RealRegister::RegNum)i);
 
       // Skip non-assignable registers
-      //
       if (realReg->getState() == TR::RealRegister::Locked)
          continue;
 
       if (realReg->getAssignedRegister() == NULL)
          {
-         numFreeRealRegisters++;
-         freeRealRegisters |= TR::RealRegister::getRealRegisterMask(realReg->getKind(), realReg->getRegisterNumber());
+         numFreeGPRs++;
+         freeGPRs |= TR::RealRegister::getRealRegisterMask(realReg->getKind(), realReg->getRegisterNumber());
          }
       }
 
-   if (!freeRealRegisters)
+   for (i = TR::RealRegister::FirstXMMR; i <= TR::RealRegister::LastXMMR; i++)
+      {
+      realReg = self()->machine()->getRealRegister((TR::RealRegister::RegNum)i);
+
+      // Skip non-assignable registers
+      if (realReg->getState() == TR::RealRegister::Locked)
+         continue;
+
+      if (realReg->getAssignedRegister() == NULL)
+         {
+         numFreeXMMs++;
+         freeXMMs |= TR::RealRegister::getRealRegisterMask(realReg->getKind(), realReg->getRegisterNumber());
+         }
+      }
+
+   if (!(freeGPRs | freeXMMs))
       return;
 
    // Add the current spilled virtual registers and this instruction to the list
    // of candidates for better spill placement.
    // For each, remember the current set of free real registers.
    //
-   for (auto regElement = _spilledIntRegisters.begin(); regElement != _spilledIntRegisters.end() && numFreeRealRegisters; ++regElement)
+   for (auto regElement = _spilledIntRegisters.begin(); regElement != _spilledIntRegisters.end() && (numFreeGPRs || numFreeXMMs); ++regElement)
       {
       // For now only consider non-collected registers. Need to add
       // a mechanism for modifying the GC information for intervening
@@ -1201,11 +1217,11 @@ void OMR::X86::CodeGenerator::saveBetterSpillPlacements(TR::Instruction * branch
       if ((*regElement)->containsCollectedReference() || (*regElement)->containsInternalPointer() || (*regElement)->hasBetterSpillPlacement())
          continue;
 
-      self()->traceRegisterAssignment("Saved better spill placement for %R, mask = %x.", *regElement, freeRealRegisters);
+      self()->traceRegisterAssignment("Saved better spill placement for %R, mask = %x.", *regElement, freeGPRs);
 
       TR_BetterSpillPlacement * info = new (self()->trHeapMemory()) TR_BetterSpillPlacement;
       info->_virtReg                = *regElement;
-      info->_freeRealRegs           = freeRealRegisters;
+      info->_freeRealRegs           = (*regElement)->getKind() == TR_GPR ? freeGPRs : freeXMMs;
       info->_branchInstruction      = branchInstruction;
       info->_prev                   = 0;
       info->_next                   = _betterSpillPlacements;
@@ -1231,6 +1247,10 @@ void OMR::X86::CodeGenerator::removeBetterSpillPlacementCandidate(TR::RealRegist
    for (info = _betterSpillPlacements, next = NULL; info; info = next)
       {
       next = info->_next;
+
+      if (info->_virtReg->getKind() != realReg->getKind())
+         continue;
+
       info->_freeRealRegs &= mask;
       if (info->_freeRealRegs == 0)
          {
@@ -1264,7 +1284,7 @@ OMR::X86::CodeGenerator::findBetterSpillPlacement(
       if (info->_virtReg == virtReg)
          break;
       }
-   if (info && (info->_freeRealRegs & TR::RealRegister::getRealRegisterMask(virtReg->getKind(), (TR::RealRegister::RegNum)realRegNum)))
+   if (info && (info->_virtReg->getKind() == virtReg->getKind()) && (info->_freeRealRegs & TR::RealRegister::getRealRegisterMask(virtReg->getKind(), (TR::RealRegister::RegNum)realRegNum)))
       {
       placement = info->_branchInstruction;
       self()->traceRegisterAssignment("Successful better spill placement for %R at [" POINTER_PRINTF_FORMAT "].", virtReg, placement);
