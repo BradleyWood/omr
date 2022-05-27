@@ -187,7 +187,7 @@ TR::Register* OMR::X86::TreeEvaluator::SIMDsplatsEvaluator(TR::Node* node, TR::C
       default:
          if (cg->comp()->getOption(TR_TraceCG))
             traceMsg(cg->comp(), "Unsupported data type, Node = %p\n", node);
-         TR_ASSERT(false, "Unsupported data type");
+         TR_ASSERT_FATAL(false, "Unsupported data type");
          break;
       }
 
