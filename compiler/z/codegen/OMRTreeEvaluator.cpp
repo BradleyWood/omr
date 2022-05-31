@@ -14682,7 +14682,7 @@ OMR::Z::TreeEvaluator::vloadEvaluator(TR::Node *node, TR::CodeGenerator *cg)
       }
    else
       {
-      TR_ASSERT(false, "Unknown vector load IL\n");
+      TR_ASSERT_FATAL(false, "Unknown vector load IL\n");
       }
 
    TR::Register * targetReg = cg->allocateRegister(TR_VRF);
@@ -14741,7 +14741,7 @@ OMR::Z::TreeEvaluator::vstoreEvaluator(TR::Node *node, TR::CodeGenerator *cg)
       }
    else
       {
-      TR_ASSERT(false, "Unknown vector store IL\n");
+      TR_ASSERT_FATAL(false, "Unknown vector store IL\n");
       }
 
    TR::Node * valueChild = node->getOpCode().isStoreDirect() ? node->getFirstChild() : node->getSecondChild();
@@ -15568,7 +15568,7 @@ int32_t getVectorElementSize(TR::Node *node)
       case TR::Float: return 4;
       case TR::Int64:
       case TR::Double: return 8;
-      default: TR_ASSERT(false, "Unknown vector node type %s for element size\n", node->getDataType().toString()); return 0;
+      default: TR_ASSERT_FATAL(false, "Unknown vector node type %s for element size\n", node->getDataType().toString()); return 0;
       }
    }
 
@@ -15585,7 +15585,7 @@ int32_t getVectorElementSizeMask(TR::Node *node)
       case TR::Float: return 2;
       case TR::Int64:
       case TR::Double: return 3;
-      default: TR_ASSERT(false, "Unknown vector node type %s for Element Size Control Mask\n", node->getDataType().toString()); return 0;
+      default: TR_ASSERT_FATAL(false, "Unknown vector node type %s for Element Size Control Mask\n", node->getDataType().toString()); return 0;
       }
    }
 
@@ -15597,7 +15597,7 @@ int32_t getVectorElementSizeMask(int8_t size)
       case 4: return 2;
       case 2: return 1;
       case 1: return 0;
-      default: TR_ASSERT(false, "Unknown vector size %i for Element Size Control Mask\n", size); return 0;
+      default: TR_ASSERT_FATAL(false, "Unknown vector size %i for Element Size Control Mask\n", size); return 0;
       }
    }
 
@@ -15621,7 +15621,7 @@ OMR::Z::TreeEvaluator::vnegEvaluator(TR::Node *node, TR::CodeGenerator *cg)
          opCode = TR::InstOpCode::VFPSO;
          break;
       default:
-         TR_ASSERT(false, "unrecognized vector type %s\n", node->getDataType().toString());
+         TR_ASSERT_FATAL(false, "unrecognized vector type %s\n", node->getDataType().toString());
          return NULL;
       }
 
@@ -15710,7 +15710,7 @@ generateFusedMultiplyAddIfPossible(TR::CodeGenerator *cg, TR::Node *addNode, TR:
             generateRRDInstruction(cg, op, addNode, addReg, mulLeftReg, mulRightReg);
          break;
       default:
-         TR_ASSERT(false, "unhandled opcode %s in generateFusedMultiplyAddIfPossible\n", ((TR::InstOpCode *)op)->getMnemonicName());
+         TR_ASSERT_FATAL(false, "unhandled opcode %s in generateFusedMultiplyAddIfPossible\n", ((TR::InstOpCode *)op)->getMnemonicName());
          break;
       }
 
@@ -15758,7 +15758,7 @@ OMR::Z::TreeEvaluator::vaddEvaluator(TR::Node *node, TR::CodeGenerator *cg)
             opCode = TR::InstOpCode::VFA;
             break;
          default:
-            TR_ASSERT(false, "unrecognized vector type %s\n", node->getDataType().toString());
+            TR_ASSERT_FATAL(false, "unrecognized vector type %s\n", node->getDataType().toString());
             return NULL;
          }
       return TR::TreeEvaluator::inlineVectorBinaryOp(node, cg, opCode);
@@ -15797,7 +15797,7 @@ OMR::Z::TreeEvaluator::vsubEvaluator(TR::Node *node, TR::CodeGenerator *cg)
             opCode = TR::InstOpCode::VFS;
             break;
          default:
-            TR_ASSERT(false, "unrecognized vector type %s\n", node->getDataType().toString());
+            TR_ASSERT_FATAL(false, "unrecognized vector type %s\n", node->getDataType().toString());
             return NULL;
          }
       return TR::TreeEvaluator::inlineVectorBinaryOp(node, cg, opCode);
@@ -15864,7 +15864,7 @@ OMR::Z::TreeEvaluator::vmulEvaluator(TR::Node *node, TR::CodeGenerator *cg)
       case TR::Float:
       case TR::Double:
          return TR::TreeEvaluator::inlineVectorBinaryOp(node, cg, TR::InstOpCode::VFM);
-      default: TR_ASSERT(false, "unrecognized vector type %s\n", node->getDataType().toString()); return NULL;
+      default: TR_ASSERT_FATAL(false, "unrecognized vector type %s\n", node->getDataType().toString()); return NULL;
       }
    }
 
@@ -15970,7 +15970,7 @@ OMR::Z::TreeEvaluator::vdivEvaluator(TR::Node *node, TR::CodeGenerator *cg)
       case TR::Int64: return TR::TreeEvaluator::vDivOrRemHelper(node, cg, true);
       case TR::Float:
       case TR::Double: return TR::TreeEvaluator::inlineVectorBinaryOp(node, cg, TR::InstOpCode::VFD);
-      default: TR_ASSERT(false, "unrecognized vector type %s\n", node->getDataType().toString()); return NULL;
+      default: TR_ASSERT_FATAL(false, "unrecognized vector type %s\n", node->getDataType().toString()); return NULL;
       }
    }
 
@@ -16005,7 +16005,7 @@ OMR::Z::TreeEvaluator::vcmpeqEvaluator(TR::Node *node, TR::CodeGenerator *cg)
       case TR::Int32:
       case TR::Int64: return TR::TreeEvaluator::inlineVectorBinaryOp(node, cg, TR::InstOpCode::VCEQ);
       case TR::Double: return TR::TreeEvaluator::inlineVectorBinaryOp(node, cg, TR::InstOpCode::VFCE);
-      default: TR_ASSERT(false, "unrecognized vector type %s\n", node->getDataType().toString()); return NULL;
+      default: TR_ASSERT_FATAL(false, "unrecognized vector type %s\n", node->getDataType().toString()); return NULL;
       }
    }
 
@@ -16023,7 +16023,7 @@ OMR::Z::TreeEvaluator::vcmpneEvaluator(TR::Node *node, TR::CodeGenerator *cg)
       case TR::Int32:
       case TR::Int64: targetReg = TR::TreeEvaluator::inlineVectorBinaryOp(node, cg, TR::InstOpCode::VCEQ); break;
       case TR::Double: targetReg = TR::TreeEvaluator::inlineVectorBinaryOp(node, cg, TR::InstOpCode::VFCE); break;
-      default: TR_ASSERT(false, "unrecognized vector type %s\n", node->getDataType().toString()); break;
+      default: TR_ASSERT_FATAL(false, "unrecognized vector type %s\n", node->getDataType().toString()); break;
       }
 
    // vector nor with zero vector
@@ -16055,7 +16055,7 @@ OMR::Z::TreeEvaluator::vcmpgtEvaluator(TR::Node *node, TR::CodeGenerator *cg)
       case TR::Int32:
       case TR::Int64: return TR::TreeEvaluator::inlineVectorBinaryOp(node, cg, op);
       case TR::Double: return TR::TreeEvaluator::inlineVectorBinaryOp(node, cg, TR::InstOpCode::VFCH);
-      default: TR_ASSERT(false, "unrecognized vector type %s\n", node->getDataType().toString()); return NULL;
+      default: TR_ASSERT_FATAL(false, "unrecognized vector type %s\n", node->getDataType().toString()); return NULL;
       }
    }
 

@@ -1479,7 +1479,7 @@ OMR::ARM64::TreeEvaluator::vsplatsEvaluator(TR::Node *node, TR::CodeGenerator *c
             op = TR::InstOpCode::vdupe2d;
             break;
          default:
-            TR_ASSERT(false, "unrecognized vector type %s", node->getDataType().toString());
+            TR_ASSERT_FATAL(false, "unrecognized vector type %s", node->getDataType().toString());
             return NULL;
          }
 
