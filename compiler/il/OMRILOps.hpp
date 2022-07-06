@@ -883,6 +883,22 @@ public:
       return TR::BadILOp;
       }
 
+   static TR::ILOpCodes indirectStoreOpCode(TR::DataType type)
+      {
+      switch(type)
+         {
+         case TR::Int8:     return TR::bstorei;
+         case TR::Int16:    return TR::sstorei;
+         case TR::Int32:    return TR::istorei;
+         case TR::Int64:    return TR::lstorei;
+         case TR::Address:  return TR::astorei;
+         case TR::Float:    return TR::fstorei;
+         case TR::Double:   return TR::dstorei;
+         default: TR_ASSERT(0, "no load opcode for this datatype");
+        }
+      return TR::BadILOp;
+      }
+
    static TR::ILOpCodes absOpCode(TR::DataType type)
       {
       if (type.isVector()) return createVectorOpCode(TR::vabs, type);
@@ -1456,6 +1472,19 @@ public:
 
       switch (op)
          {
+         case TR::fsqrt:
+         case TR::dsqrt:
+            return ILOpCode::createVectorOpCode(TR::vsqrt, vectorType);
+         case TR::imin:
+         case TR::lmin:
+         case TR::fmin:
+         case TR::dmin:
+            return ILOpCode::createVectorOpCode(TR::vmin, vectorType);
+         case TR::imax:
+         case TR::lmax:
+         case TR::fmax:
+         case TR::dmax:
+            return ILOpCode::createVectorOpCode(TR::vmax, vectorType);
          case TR::bload:
          case TR::sload:
          case TR::iload:
