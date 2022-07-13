@@ -1040,10 +1040,11 @@ bool OMR::X86::CodeGenerator::getSupportsOpCodeForAutoSIMD(TR::CPU *cpu, TR::ILO
                 return false;
             }
       case TR::vsplats:
-         if (et == TR::Int32 || et == TR::Int64 || et == TR::Float || et == TR::Double)
-            return ot.getVectorLength() == TR::VectorLength128;
-         else
-            return false;
+         return ot.getVectorLength() == TR::VectorLength128;
+//         if (et == TR::Int8 || et == TR::Int32 || et == TR::Int64 || et == TR::Float || et == TR::Double)
+//            return ot.getVectorLength() == TR::VectorLength128;
+//         else
+//            return false;
 
        /*
        * GRA does not work with vector registers on 32 bit due to a bug where xmm registers are not being assigned.

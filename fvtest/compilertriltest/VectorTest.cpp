@@ -567,3 +567,38 @@ TEST_F(VectorTest, VInt8BitSelect) {
         EXPECT_EQ(inputA[i] ^ ((inputA[i] ^ inputB[i]) & inputC[i]), output[i]);
     }
 }
+
+TEST_F(VectorTest, VSplatsInt8) {
+
+    auto inputTrees = "(method return= NoType args=[Address,Address]   "
+                      "  (block                                                        "
+                      "     (vstoreiVector128Int16 offset=0                            "
+                      "         (aload parm=0)                                         "
+                      "            (vsplatsVector128Int16                              "
+                      "                 (iloadi              (aload parm=1))))         "
+                      "     (return)))                                                 ";
+
+    auto trees = parseString(inputTrees);
+
+    ASSERT_NOTNULL(trees);
+    //TODO: Re-enable this test on S390 after issue #1843 is resolved.
+    SKIP_ON_S390(KnownBug) << "This test is currently disabled on Z platforms because not all Z platforms have vector support (issue #1843)";
+    SKIP_ON_S390X(KnownBug) << "This test is currently disabled on Z platforms because not all Z platforms have vector support (issue #1843)";
+    SKIP_ON_RISCV(MissingImplementation);
+
+    Tril::DefaultCompiler compiler(trees);
+    ASSERT_EQ(0, compiler.compile()) << "Compilation failed unexpectedly\n" << "Input trees: " << inputTrees;
+
+
+    auto entry_point = compiler.getEntryPoint<void (*)(int16_t[],int16_t*)>();
+    // This test currently assumes 128bit SIMD
+
+    int16_t output[8] =  {0};
+    int16_t broadcast = 0x60;
+
+    entry_point(output, &broadcast);
+
+    for (int i = 0; i < (sizeof(output) / sizeof(*output)); i++) {
+        EXPECT_EQ(broadcast, output[i]);
+    }
+}

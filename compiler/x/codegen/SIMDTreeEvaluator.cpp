@@ -158,6 +158,15 @@ TR::Register* OMR::X86::TreeEvaluator::SIMDsplatsEvaluator(TR::Node* node, TR::C
    TR::Register* resultReg = cg->allocateRegister(TR_VRF);
    switch (node->getDataType().getVectorElementType())
       {
+      case TR::Int8:
+         generateRegRegInstruction(TR::InstOpCode::MOVDRegReg4, node, resultReg, childReg, cg);
+         generateRegRegImmInstruction(TR::InstOpCode::PSHUFDRegRegImm1, node, resultReg, resultReg, 0x00, cg);
+         break;
+      case TR::Int16:
+         generateRegRegInstruction(TR::InstOpCode::MOVDRegReg4, node, resultReg, childReg, cg);
+         generateRegRegImmInstruction(TR::InstOpCode::PSHUFLWRegRegImm1, node, resultReg, resultReg, 0x00, cg);
+         generateRegRegInstruction(TR::InstOpCode::PUNPCKLWDRegReg, node, resultReg, resultReg, cg);
+         break;
       case TR::Int32:
          generateRegRegInstruction(TR::InstOpCode::MOVDRegReg4, node, resultReg, childReg, cg);
          generateRegRegImmInstruction(TR::InstOpCode::PSHUFDRegRegImm1, node, resultReg, resultReg, 0x00, cg); // 00 00 00 00 shuffle xxxA to AAAA
