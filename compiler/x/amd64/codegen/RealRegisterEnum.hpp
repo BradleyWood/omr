@@ -126,11 +126,21 @@
    zmm15                   = xmm15,
    LastZMMR                = zmm15,
 
-   AllFPRegisters          = 42,
-   ByteReg                 = 43,
-   BestFreeReg             = 44,
-   SpilledReg              = 45,
-   NumRegisters            = 46,
+   // avx512 write mask registers
+   // k0 -> reserved for no write mask
+   k1                      = 42,
+   k2                      = 43,
+   k3                      = 44,
+   k4                      = 45,
+   k5                      = 46,
+   k6                      = 47,
+   k7                      = 48,
+
+   AllFPRegisters          = 49,
+   ByteReg                 = 50,
+   BestFreeReg             = 51,
+   SpilledReg              = 52,
+   NumRegisters            = 53,
 
    NumXMMRegisters         = LastXMMR - FirstXMMR + 1,
    MaxAssignableRegisters  = NumXMMRegisters + (LastAssignableGPR - FirstGPR + 1) - 1 // -1 for stack pointer
