@@ -1087,6 +1087,21 @@ bool OMR::X86::CodeGenerator::getSupportsOpCodeForAutoSIMD(TR::CPU *cpu, TR::ILO
          break;
       }
 
+   // Leave floating-point reductions disabled due to a precision tolerance
+   // issue in openjdk tests. Min/max f/d reductions cannot be enabled at
+   // 512-bits until vector masking support is enabled.
+   if (opcode.isVectorReduction() && !et.isFloatingPoint())
+      {
+      TR::ILOpCodes op = OMR::ILOpCode::reductionToVerticalOpcode(opcode.getOpCodeValue(), ot.getVectorLength());
+
+      if (op != TR::BadILOp)
+         {
+         return getSupportsOpCodeForAutoSIMD(cpu, op);
+         }
+
+      return false;
+      }
+
    TR::InstOpCode nativeOpcode = TR::TreeEvaluator::getNativeSIMDOpcode(opcode.getOpCodeValue(), ot, false);
 
    // check if the operation can be mapped to a single native instruction,
