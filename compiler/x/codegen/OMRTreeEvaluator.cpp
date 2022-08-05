@@ -4506,17 +4506,198 @@ OMR::X86::TreeEvaluator::bitpermuteEvaluator(TR::Node *node, TR::CodeGenerator *
    return resultReg;
    }
 
+TR::Register* OMR::X86::TreeEvaluator::SIMDreductionEvaluator(TR::Node* node, TR::CodeGenerator* cg)
+   {
+   TR::Node *child = node->getFirstChild();
+   TR::Register *inputVectorReg = cg->evaluate(child);
+   TR::VectorLength vl = child->getDataType().getVectorLength();
+   TR::DataType dt = child->getDataType().getVectorElementType();
+   bool useGPR = !dt.isFloatingPoint();
+
+   TR::RegisterDependencyConditions *deps = generateRegisterDependencyConditions(0, 2, cg);
+   TR::InstOpCode regOpcode = getNativeSIMDOpcode(OMR::ILOpCode::reductionToVerticalOpcode(node->getOpCodeValue(), vl), child->getDataType(), false);
+
+   TR::Register *workingReg = cg->allocateRegister(TR_VRF);
+   TR::Register *resultVRF = cg->allocateRegister(TR_VRF);
+   TR::Register *fprReg = dt.isFloatingPoint() ? cg->allocateRegister(TR_FPR) : NULL;
+
+   deps->addPostCondition(resultVRF, TR::RealRegister::NoReg, cg);
+
+   TR::LabelSymbol *beginLabel = generateLabelSymbol(cg);
+   TR::LabelSymbol *doneLabel = generateLabelSymbol(cg);
+   beginLabel->setStartInternalControlFlow();
+   doneLabel->setEndInternalControlFlow();
+
+   TR_ASSERT_FATAL_WITH_NODE(node, regOpcode.getMnemonic() != TR::InstOpCode::bad, "No opcode for vector reduction");
+
+   generateLabelInstruction(TR::InstOpCode::label, node, beginLabel, cg);
+
+   TR::InstOpCode movOpcode = TR::InstOpCode::MOVDQURegReg;
+   generateRegRegInstruction(movOpcode.getMnemonic(), node, workingReg, inputVectorReg, cg, movOpcode.getSIMDEncoding(&cg->comp()->target().cpu, vl));
+
+   switch (vl)
+      {
+      case TR::VectorLength512:
+         // VEXTRACTF64x4 (extract 256-bits from zmm and store in ymm)
+         generateRegRegImmInstruction(TR::InstOpCode::VEXTRACTF64X4RegReg, node, resultVRF, workingReg, 0xFF, cg);
+         generateRegRegInstruction(regOpcode.getMnemonic(), node, workingReg, resultVRF, cg, regOpcode.getSIMDEncoding(&cg->comp()->target().cpu, TR::VectorLength256));
+         // vertical $opcode (such as add)
+      case TR::VectorLength256:
+         // VEXTRACTF128 (extract 128 bits from ymm and store in xmm)
+         // vertical $opcode (such as add)
+         generateRegRegImmInstruction(TR::InstOpCode::VEXTRACTF128RegReg, node, resultVRF, workingReg, 0xFF, cg);
+         generateRegRegInstruction(regOpcode.getMnemonic(), node, workingReg, resultVRF, cg);
+      case TR::VectorLength128:
+         generateRegRegImmInstruction(TR::InstOpCode::PSHUFDRegRegImm1, node, resultVRF, workingReg, 0x0E, cg);
+         generateRegRegInstruction(regOpcode.getMnemonic(), node, resultVRF, workingReg, cg);
+
+         if (dt.isFloatingPoint())
+            {
+            TR::VectorOperation op = node->getOpCode().getVectorOperation();
+            switch (node->getOpCode().getVectorOperation())
+               {
+               case TR::vreductionMax:
+               case TR::vreductionMin:
+                  {
+                  TR::InstOpCode cmpOpcode = dt.isFloat() ? TR::InstOpCode::CMPPSRegRegImm1 : TR::InstOpCode::CMPPDRegRegImm1;
+
+                  generateRegRegImmInstruction(cmpOpcode.getMnemonic(), node, workingReg, workingReg, 0xC, cg,
+                                                cmpOpcode.getSIMDEncoding(&cg->comp()->target().cpu, TR::VectorLength128));
+
+                  generateLabelInstruction(TR::InstOpCode::JE4, node, beginLabel, cg);
+
+                  // One of the packed inputs is NaN. Set result to NaN.
+                  generateRegRegInstruction(TR::InstOpCode::PCMPEQWRegReg, node, fprReg, fprReg, cg);
+                  generateLabelInstruction(TR::InstOpCode::JMP4, node, doneLabel, cg);
+                  }
+               default:
+                  break;
+               }
+            }
+
+         switch (dt)
+            {
+            case TR::Int8:
+               {
+               generateRegRegImmInstruction(TR::InstOpCode::PSHUFDRegRegImm1, node, workingReg, resultVRF, 0x1, cg);
+               generateRegRegRegInstruction(regOpcode.getMnemonic(), node, resultVRF, workingReg, resultVRF, cg);
+
+               generateRegRegImmInstruction(TR::InstOpCode::PSHUFLWRegRegImm1, node, workingReg, resultVRF, 0x1, cg);
+               generateRegRegRegInstruction(regOpcode.getMnemonic(), node, resultVRF, workingReg, resultVRF, cg);
+
+               TR::Register *tReg = cg->allocateRegister(TR_VRF);
+               deps->addPostCondition(tReg, TR::RealRegister::NoReg, cg);
+
+               generateRegRegInstruction(TR::InstOpCode::MOVDQURegReg, node, tReg, resultVRF, cg);
+
+               generateRegImmInstruction(TR::InstOpCode::PSRLQRegImm1, node, tReg, 0x8, cg);
+               generateRegRegRegInstruction(regOpcode.getMnemonic(), node, resultVRF, tReg, resultVRF, cg);
+
+               cg->stopUsingRegister(tReg);
+               break;
+               }
+            case TR::Int16:
+               generateRegRegImmInstruction(TR::InstOpCode::PSHUFDRegRegImm1, node, workingReg, resultVRF, 0x1, cg);
+               generateRegRegInstruction(regOpcode.getMnemonic(), node, resultVRF, workingReg, cg);
+
+               generateRegRegImmInstruction(TR::InstOpCode::PSHUFLWRegRegImm1, node, workingReg, resultVRF, 0x1, cg);
+               generateRegRegInstruction(regOpcode.getMnemonic(), node, resultVRF, workingReg, cg);
+               break;
+            case TR::Int32:
+            case TR::Float:
+               generateRegRegImmInstruction(TR::InstOpCode::PSHUFDRegRegImm1, node, workingReg, resultVRF, 0x1, cg);
+               generateRegRegInstruction(regOpcode.getMnemonic(), node, resultVRF, workingReg, cg);
+               break;
+            case TR::Int64:
+            case TR::Double:
+               // nothing to do
+               break;
+            default:
+               TR_ASSERT_FATAL(0, "Unsupported vector element type");
+            }
+         break;
+      default:
+         TR_ASSERT_FATAL(0, "Unsupported vector length");
+      }
+
+   cg->stopUsingRegister(workingReg);
+   cg->decReferenceCount(child);
+
+   if (useGPR)
+      {
+      deps->stopAddingConditions();
+      // move integer result from xmm to gpr
+      TR::Register *intReg = cg->allocateRegister(TR_GPR);
+      node->setRegister(intReg);
+
+      TR::InstOpCode::Mnemonic movOpcode = TR::InstOpCode::bad;
+
+      switch (dt)
+         {
+         case TR::Int8:
+         case TR::Int16:
+         case TR::Int32:
+         case TR::Float:
+            movOpcode = TR::InstOpCode::MOVDReg4Reg;
+            break;
+         case TR::Int64:
+         case TR::Double:
+            movOpcode = TR::InstOpCode::MOVQReg8Reg;
+            break;
+         default:
+            TR_ASSERT_FATAL(0, "Unsupported vector element type");
+            break;
+         }
+
+      generateRegRegInstruction(movOpcode, node, intReg, resultVRF, deps, cg);
+
+      if (dt == TR::Int8)
+         {
+         generateRegImmInstruction(TR::InstOpCode::ANDRegImm4(), node, intReg, 0xFF, cg);
+         }
+      else if (dt == TR::Int16)
+         {
+         generateRegImmInstruction(TR::InstOpCode::ANDRegImm4(), node, intReg, 0xFFFF, cg);
+         }
+
+      cg->stopUsingRegister(resultVRF);
+
+      return intReg;
+      }
+
+   // Since result register is a VRF, we need to allocate an FPR and copy value
+   // This will waste an instruction but should prevent a bug in CG
+   deps->addPostCondition(fprReg, TR::RealRegister::NoReg, cg);
+   deps->stopAddingConditions();
+   node->setRegister(fprReg);
+
+   if (dt == TR::Double)
+      {
+      generateRegRegInstruction(TR::InstOpCode::MOVSDRegReg, node, fprReg, resultVRF, cg);
+      }
+   else
+      {
+      fprReg->setIsSinglePrecision();
+      generateRegRegInstruction(TR::InstOpCode::MOVSSRegReg, node, fprReg, resultVRF, cg);
+      }
+
+   generateLabelInstruction(TR::InstOpCode::label, node, doneLabel, deps, cg);
+
+   cg->stopUsingRegister(resultVRF);
+
+   return fprReg;
+   }
 
 TR::Register*
 OMR::X86::TreeEvaluator::vreductionAddEvaluator(TR::Node *node, TR::CodeGenerator *cg)
    {
-   return TR::TreeEvaluator::unImpOpEvaluator(node, cg);
+   return TR::TreeEvaluator::SIMDreductionEvaluator(node, cg);
    }
 
 TR::Register*
 OMR::X86::TreeEvaluator::vreductionAndEvaluator(TR::Node *node, TR::CodeGenerator *cg)
    {
-   return TR::TreeEvaluator::unImpOpEvaluator(node, cg);
+   return TR::TreeEvaluator::SIMDreductionEvaluator(node, cg);
    }
 
 TR::Register*
@@ -4528,35 +4709,35 @@ OMR::X86::TreeEvaluator::vreductionFirstNonZeroEvaluator(TR::Node *node, TR::Cod
 TR::Register*
 OMR::X86::TreeEvaluator::vreductionMaxEvaluator(TR::Node *node, TR::CodeGenerator *cg)
    {
-   return TR::TreeEvaluator::unImpOpEvaluator(node, cg);
+   return TR::TreeEvaluator::SIMDreductionEvaluator(node, cg);
    }
 
 TR::Register*
 OMR::X86::TreeEvaluator::vreductionMinEvaluator(TR::Node *node, TR::CodeGenerator *cg)
    {
-   return TR::TreeEvaluator::unImpOpEvaluator(node, cg);
+   return TR::TreeEvaluator::SIMDreductionEvaluator(node, cg);
    }
 
 TR::Register*
 OMR::X86::TreeEvaluator::vreductionMulEvaluator(TR::Node *node, TR::CodeGenerator *cg)
    {
-   return TR::TreeEvaluator::unImpOpEvaluator(node, cg);
+   return TR::TreeEvaluator::SIMDreductionEvaluator(node, cg);
    }
 
 TR::Register*
 OMR::X86::TreeEvaluator::vreductionOrEvaluator(TR::Node *node, TR::CodeGenerator *cg)
    {
-   return TR::TreeEvaluator::unImpOpEvaluator(node, cg);
-   }
-
-TR::Register*
-OMR::X86::TreeEvaluator::vreductionOrUncheckedEvaluator(TR::Node *node, TR::CodeGenerator *cg)
-   {
-   return TR::TreeEvaluator::unImpOpEvaluator(node, cg);
+   return TR::TreeEvaluator::SIMDreductionEvaluator(node, cg);
    }
 
 TR::Register*
 OMR::X86::TreeEvaluator::vreductionXorEvaluator(TR::Node *node, TR::CodeGenerator *cg)
+   {
+   return TR::TreeEvaluator::SIMDreductionEvaluator(node, cg);
+   }
+
+TR::Register*
+OMR::X86::TreeEvaluator::vreductionOrUncheckedEvaluator(TR::Node *node, TR::CodeGenerator *cg)
    {
    return TR::TreeEvaluator::unImpOpEvaluator(node, cg);
    }

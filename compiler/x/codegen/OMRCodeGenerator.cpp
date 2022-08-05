@@ -1006,6 +1006,18 @@ bool OMR::X86::CodeGenerator::getSupportsOpCodeForAutoSIMD(TR::CPU *cpu, TR::ILO
    TR_ASSERT_FATAL(et == TR::Int8 || et == TR::Int16 || et == TR::Int32 || et == TR::Int64 || et == TR::Float || et == TR::Double,
                    "Unexpected vector element type\n");
 
+   if (opcode.isVectorReduction() && !et.isFloatingPoint())
+      {
+      TR::ILOpCodes op = OMR::ILOpCode::reductionToVerticalOpcode(opcode.getOpCodeValue(), ot.getVectorLength());
+
+      if (op != TR::BadILOp)
+         {
+         return getSupportsOpCodeForAutoSIMD(cpu, op);
+         }
+
+      return false;
+      }
+
    // implemented vector opcodes
    switch (opcode.getVectorOperation())
       {
