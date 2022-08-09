@@ -298,6 +298,7 @@ class OMR_EXTENSIBLE TreeEvaluator: public OMR::TreeEvaluator
 
    // For unary ILOpcodes that can be translated to a single SSE/AVX instruction
    static TR::Register *unaryVectorArithmeticEvaluator(TR::Node *node, TR::CodeGenerator *cg);
+   static TR::Register *floatingPointAbsEvaluator(TR::Node *node, TR::CodeGenerator *cg);
 
    // SIMD evaluators
    static TR::Register *SIMDRegLoadEvaluator(TR::Node *node, TR::CodeGenerator *cg);

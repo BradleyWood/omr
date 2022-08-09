@@ -1021,6 +1021,7 @@ bool OMR::X86::CodeGenerator::getSupportsOpCodeForAutoSIMD(TR::CPU *cpu, TR::ILO
    // implemented vector opcodes
    switch (opcode.getVectorOperation())
       {
+      case TR::vabs:
       case TR::vneg:
          switch (ot.getVectorLength()) {
             case TR::VectorLength128:

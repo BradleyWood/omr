@@ -36,15 +36,55 @@
 
 extern TR::Register *intOrLongClobberEvaluate(TR::Node *node, bool nodeIs64Bit, TR::CodeGenerator *cg);
 
+TR::Register *OMR::X86::TreeEvaluator::floatingPointAbsEvaluator(TR::Node *node, TR::CodeGenerator *cg)
+   {
+   TR::Node *valueNode = node->getChild(0);
+   TR::Register *resultReg = cg->allocateRegister(TR_VRF);
+   TR::Register *workingReg = cg->allocateRegister(TR_VRF);
+   TR::DataType et = node->getType().getVectorElementType();
+   TR::VectorLength vl = node->getType().getVectorLength();
+
+   TR::InstOpCode movOpcode = TR::InstOpCode::MOVDQURegReg;
+   TR::InstOpCode xorOpcode = TR::InstOpCode::XORPSRegReg; // add feature flags
+   TR::InstOpCode maxOpcode = et.isFloat() ? TR::InstOpCode::MAXPSRegReg : TR::InstOpCode::MAXPDRegReg; // add feature flags
+   TR::InstOpCode subOpcode = et.isFloat() ? TR::InstOpCode::SUBPSRegReg : TR::InstOpCode::SUBPDRegReg;
+
+   TR::Register *valueReg = cg->evaluate(valueNode);
+
+   generateRegRegInstruction(xorOpcode.getMnemonic(), node, workingReg, workingReg, cg, xorOpcode.getSIMDEncoding(&cg->comp()->target().cpu, vl));
+   generateRegRegInstruction(movOpcode.getMnemonic(), node, resultReg, valueReg, cg, movOpcode.getSIMDEncoding(&cg->comp()->target().cpu, vl));
+   generateRegRegInstruction(subOpcode.getMnemonic(), node, workingReg, valueReg, cg, subOpcode.getSIMDEncoding(&cg->comp()->target().cpu, vl));
+   generateRegRegInstruction(maxOpcode.getMnemonic(), node, resultReg, resultReg, cg, maxOpcode.getSIMDEncoding(&cg->comp()->target().cpu, vl));
+
+   cg->stopUsingRegister(workingReg);
+   node->setRegister(resultReg);
+   cg->decReferenceCount(valueNode);
+
+   return resultReg;
+   }
+
 TR::Register *OMR::X86::TreeEvaluator::unaryVectorArithmeticEvaluator(TR::Node *node, TR::CodeGenerator *cg)
    {
+   TR::ILOpCode opcode = node->getOpCode();
+   TR::DataType type = node->getType();
+
+   switch (opcode.getVectorOperation())
+      {
+      case TR::vabs:
+         if (type.getVectorElementType().isFloatingPoint())
+            {
+            return TR::TreeEvaluator::floatingPointAbsEvaluator(node, cg);
+            }
+         break;
+      default:
+         break;
+      }
+
    TR::Node *valueNode = node->getChild(0);
    TR::Register *resultReg = cg->allocateRegister(TR_VRF);
 
    TR::InstOpCode regRegOpcode = TR::InstOpCode::bad;
    TR::InstOpCode regMemOpcode = TR::InstOpCode::bad;
-   TR::ILOpCode opcode = node->getOpCode();
-   TR::DataType type = node->getType();
    OMR::X86::Encoding simdEncoding;
 
    regMemOpcode = TR::TreeEvaluator::getNativeSIMDOpcode(opcode.getOpCodeValue(), node->getType(), true).getMnemonic();
