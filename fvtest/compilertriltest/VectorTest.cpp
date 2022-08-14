@@ -66,9 +66,9 @@ int typeSize(TR::DataTypes dt) {
     }
 }
 
-void compareResults(void *expected, void *actual, TR::DataTypes dt, TR::VectorLength vl) {
-    int lengthBytes = vectorSize(vl);
+void compareResults(void *expected, void *actual, TR::DataTypes dt, TR::VectorLength vl, bool isReduction = false) {
     int elementBytes = typeSize(dt);
+    int lengthBytes = isReduction ? elementBytes : vectorSize(vl);
 
     for (int i = 0; i < lengthBytes; i += elementBytes) {
         switch (dt) {
@@ -85,10 +85,16 @@ void compareResults(void *expected, void *actual, TR::DataTypes dt, TR::VectorLe
                 EXPECT_EQ(*((int64_t *) expected), *((int64_t *) actual));
                 break;
             case TR::Float:
-                EXPECT_FLOAT_EQ(*((float *) expected), *((float *) actual));
+                if (std::isnan(*((float *) expected)))
+                    EXPECT_TRUE(std::isnan(*((float *) actual)));
+                else
+                    EXPECT_FLOAT_EQ(*((float *) expected), *((float *) actual));
                 break;
             case TR::Double:
-                EXPECT_DOUBLE_EQ(*((double *) expected), *((double *) actual));
+                if (std::isnan(*((double *) expected)))
+                    EXPECT_TRUE(std::isnan(*((double *) actual)));
+                else
+                    EXPECT_DOUBLE_EQ(*((double *) expected), *((double *) actual));
                 break;
             default:
                 TR_ASSERT_FATAL(0, "Illegal type to compare");
@@ -273,7 +279,7 @@ void generateAndExecuteVectorTest(TR::ILOpCode vectorOpcode, void *expected, voi
         entry_point(result, inputA, inputB);
     }
 
-    compareResults(expected, result, elementType.getDataType(), vl);
+    compareResults(expected, result, elementType.getDataType(), vl, vectorOpcode.isVectorReduction());
 }
 
 TEST_P(ParameterizedBinaryVectorArithmeticTest, VLoadStore) {
@@ -547,6 +553,67 @@ INSTANTIATE_TEST_CASE_P(VectorTypeParameters, ParameterizedVectorTest, ::testing
     std::make_tuple(TR::VectorLength512, TR::Double)
 )));
 
+template<typename T, int n>
+struct BinaryTestData {
+
+    T expected[n];
+    T inputA[n];
+    T inputB[n];
+};
+
+typedef BinaryTestData<int8_t, 64> BinaryByteTest;
+typedef BinaryTestData<int16_t, 32> BinaryShortTest;
+typedef BinaryTestData<int32_t, 16> BinaryIntTest;
+typedef BinaryTestData<int64_t, 8> BinaryLongTest;
+typedef BinaryTestData<float_t, 16> BinaryFloatTest;
+typedef BinaryTestData<double_t, 8> BinaryDoubleTest;
+
+void dataDrivenTestEvaluator(TR::VectorOperation operation, TR::VectorLength vl, TR::DataType dt, TR::CPU *cpu, void *expected, void *inputA, void* inputB) {
+    TR::DataType vectorType = TR::DataType::createVectorType(dt.getDataType(), vl);
+    TR::ILOpCode vectorOpcode = OMR::ILOpCode::createVectorOpCode(operation, vectorType);
+
+    TR::ILOpCode loadOp = TR::ILOpCode::createVectorOpCode(TR::vloadi, vectorType);
+    TR::ILOpCode storeOp = TR::ILOpCode::createVectorOpCode(TR::vstorei, vectorType);
+    bool platformSupport = TR::CodeGenerator::getSupportsOpCodeForAutoSIMD(cpu, loadOp) &&
+                           TR::CodeGenerator::getSupportsOpCodeForAutoSIMD(cpu, storeOp) &&
+                           TR::CodeGenerator::getSupportsOpCodeForAutoSIMD(cpu, vectorOpcode);
+
+    SKIP_IF(!platformSupport, MissingImplementation) << "Opcode " << vectorOpcode.getName() << TR::DataType::getName(vectorType) << " is not supported by the target platform";
+
+    generateAndExecuteVectorTest(vectorOpcode, expected, inputA, vectorOpcode.expectedChildCount() == 2 ? inputB : NULL);
+    printf("Done: %s%s\n", vectorOpcode.getName(), TR::DataType::getName(vectorType));
+}
+
+#define BinaryDataDrivenTest(name, type, testType, vl)                                                                                         \
+TEST_P(name, BinaryVector##vl####type##Test) {                                                                                                 \
+    testType data = std::get<1>(GetParam());                                                                                                   \
+    TR::CPU cpu = TR::CPU::detect(privateOmrPortLibrary);                                                                                      \
+                                                                                                                                               \
+    dataDrivenTestEvaluator(std::get<0>(GetParam()), TR::VectorLength##vl, TR::type, &cpu, data.expected, data.inputA, data.inputB);           \
+}
+
+#define ParameterizedIOTest(type, testType) \
+class BinaryDataDriven##type##Test : public VectorTest, public ::testing::WithParamInterface<std::tuple<TR::VectorOperation, testType>> {};    \
+class BinaryDataDriven128##type##Test : public VectorTest, public ::testing::WithParamInterface<std::tuple<TR::VectorOperation, testType>> {}; \
+class BinaryDataDriven256##type##Test : public VectorTest, public ::testing::WithParamInterface<std::tuple<TR::VectorOperation, testType>> {}; \
+class BinaryDataDriven512##type##Test : public VectorTest, public ::testing::WithParamInterface<std::tuple<TR::VectorOperation, testType>> {}; \
+BinaryDataDrivenTest(BinaryDataDriven##type##Test, type, testType, 128)                                                                        \
+BinaryDataDrivenTest(BinaryDataDriven##type##Test, type, testType, 256)                                                                        \
+BinaryDataDrivenTest(BinaryDataDriven##type##Test, type, testType, 512)                                                                        \
+BinaryDataDrivenTest(BinaryDataDriven128##type##Test, type, testType, 128)                                                                     \
+BinaryDataDrivenTest(BinaryDataDriven256##type##Test, type, testType, 256)                                                                     \
+BinaryDataDrivenTest(BinaryDataDriven512##type##Test, type, testType, 512)                                                                     \
+
+ParameterizedIOTest(Int8, BinaryByteTest)
+ParameterizedIOTest(Int16, BinaryShortTest)
+ParameterizedIOTest(Int32, BinaryIntTest)
+ParameterizedIOTest(Int64, BinaryLongTest)
+ParameterizedIOTest(Float, BinaryFloatTest)
+ParameterizedIOTest(Double, BinaryDoubleTest)
+
+#define FNAN std::numeric_limits<float>::quiet_NaN()
+#define DNAN std::numeric_limits<double>::quiet_NaN()
+
 TEST_F(VectorTest, VInt8Not) {
 
    auto inputTrees = "(method return= NoType args=[Address,Address]                   "
@@ -625,3 +692,74 @@ TEST_F(VectorTest, VInt8BitSelect) {
         EXPECT_EQ(inputA[i] ^ ((inputA[i] ^ inputB[i]) & inputC[i]), output[i]);
     }
 }
+
+
+INSTANTIATE_TEST_CASE_P(BinaryFloatTest, BinaryDataDrivenFloatTest, ::testing::ValuesIn(*TRTest::MakeVector<std::tuple<TR::VectorOperation, BinaryFloatTest>>(
+    std::make_tuple(TR::vadd, BinaryFloatTest {
+        {FNAN, 4, 6, 8},
+        {   1, 2, 2, 7},
+        {FNAN, 2, 4, 1}
+    }),
+    std::make_tuple(TR::vadd, BinaryFloatTest {
+        {2, 4, 6, 8},
+        {1, 2, 2, 7},
+        {1, 2, 4, 1}
+    }),
+    std::make_tuple(TR::vneg, BinaryFloatTest {
+        {-1, FNAN, -2,  7},
+        { 1, FNAN,  2, -7},
+        {}
+    }),
+    std::make_tuple(TR::vmin, BinaryFloatTest {
+        { FNAN,  0.1, FNAN,  5, FNAN,  0.1, FNAN, 5,  FNAN,  0.1, FNAN,  5, FNAN, 25.5, FNAN,  5},
+        { FNAN, 25.5, 15.5, 12, FNAN,  0.1, 15.5, 12, FNAN, 25.5, 15.5, 12, FNAN, 25.5, 15.5, 12},
+        {   10,  0.1, FNAN,  5,   10, 25.5, FNAN,  5,   10,  0.1, FNAN,  5,   10, 55.1, FNAN,  5},
+    })
+)));
+
+INSTANTIATE_TEST_CASE_P(BinaryIntTest, BinaryDataDrivenInt32Test, ::testing::ValuesIn(*TRTest::MakeVector<std::tuple<TR::VectorOperation, BinaryIntTest>>(
+    std::make_tuple(TR::vadd, BinaryIntTest {
+        {2, 4, 6, 8},
+        {1, 2, 2, 7},
+        {1, 2, 4, 1}
+    }),
+    std::make_tuple(TR::vadd, BinaryIntTest {
+        {2, 4, 6, 8},
+        {1, 2, 2, 7},
+        {1, 2, 4, 1}
+    }),
+    std::make_tuple(TR::vneg, BinaryIntTest {
+        {-1, 2, -2, 7},
+        {1, -2, 2, -7},
+        {}
+    }),
+    std::make_tuple(TR::vneg, BinaryIntTest {
+        {-1, 2, -2, 7},
+        {1, -2, 2, -7},
+        {}
+    })
+)));
+
+INSTANTIATE_TEST_CASE_P(VBinaryIntTest, BinaryDataDrivenInt32Test, ::testing::ValuesIn(*TRTest::MakeVector<std::tuple<TR::VectorOperation, BinaryIntTest>>(
+    std::make_tuple(TR::vadd, BinaryIntTest {
+        {2, 4, 6, 8},
+        {1, 2, 2, 7},
+        {1, 2, 4, 1}
+    })
+)));
+
+INSTANTIATE_TEST_CASE_P(VBinaryLongTest, BinaryDataDrivenInt64Test, ::testing::ValuesIn(*TRTest::MakeVector<std::tuple<TR::VectorOperation, BinaryLongTest>>(
+    std::make_tuple(TR::vadd, BinaryLongTest {
+        {2, 4, 6, 8},
+        {1, 2, 2, 7},
+        {1, 2, 4, 1}
+    })
+)));
+
+INSTANTIATE_TEST_CASE_P(VBinary128Int32Test, BinaryDataDriven128Int32Test, ::testing::ValuesIn(*TRTest::MakeVector<std::tuple<TR::VectorOperation, BinaryIntTest>>(
+    std::make_tuple(TR::vadd, BinaryIntTest {
+        {2, 4, 6, 8},
+        {1, 2, 2, 7},
+        {1, 2, 4, 1}
+    })
+)));
