@@ -1956,6 +1956,55 @@ class X86MemRegInstruction : public TR::X86MemInstruction
 #endif
    };
 
+class X86MemMaskRegInstruction : public TR::X86MemRegInstruction
+   {
+   TR::Register *_maskRegister;
+
+   public:
+
+   X86MemMaskRegInstruction(TR::InstOpCode::Mnemonic op,
+                            TR::Node *node,
+                            TR::MemoryReference *mr,
+                            TR::Register *mreg,
+                            TR::Register *sreg,
+                            TR::CodeGenerator *cg,
+                            OMR::X86::Encoding encoding = OMR::X86::Default)
+      : X86MemRegInstruction(op, node, mr, sreg, cg, encoding), _maskRegister(mreg)
+      {
+      useRegister(mreg);
+      }
+
+   X86MemMaskRegInstruction(TR::InstOpCode::Mnemonic op,
+                            TR::Node *node,
+                            TR::MemoryReference *mr,
+                            TR::Register *mreg,
+                            TR::Register *sreg,
+                            TR::RegisterDependencyConditions *cond,
+                            TR::CodeGenerator *cg,
+                            OMR::X86::Encoding encoding = OMR::X86::Default)
+      : X86MemRegInstruction(op, node, mr, sreg, cond, cg, encoding), _maskRegister(mreg)
+      {
+      useRegister(mreg);
+      }
+
+   virtual char *description() { return "X86MemMaskReg"; }
+
+   virtual Kind getKind() { return IsMemMaskReg; }
+
+   virtual TR::Register *getMaskRegister()         { return _maskRegister; }
+   TR::Register *setMaskRegister(TR::Register *mr) { return (_maskRegister = mr); }
+
+   virtual uint8_t* generateOperand(uint8_t* cursor);
+
+   virtual void assignRegisters(TR_RegisterKinds kindsToBeAssigned);
+   virtual bool refsRegister(TR::Register *reg);
+   virtual bool defsRegister(TR::Register *reg);
+   virtual bool usesRegister(TR::Register *reg);
+
+#ifdef DEBUG
+   virtual uint32_t getNumOperandReferencedGPRegisters() { return 1 + getMemoryReference()->getNumMRReferencedGPRegisters(); }
+#endif
+   };
 
 class X86MemRegImmInstruction : public TR::X86MemRegInstruction
    {
@@ -3255,6 +3304,9 @@ TR::X86RegMaskRegInstruction  * generateRegMaskRegInstruction(TR::InstOpCode::Mn
 
 TR::X86RegMaskMemInstruction  * generateRegMaskMemInstruction(TR::InstOpCode::Mnemonic op, TR::Node *, TR::Register * reg1, TR::Register * mreg, TR::MemoryReference * mr, TR::CodeGenerator *cg, OMR::X86::Encoding encoding = OMR::X86::Default);
 TR::X86RegMaskMemInstruction  * generateRegMaskMemInstruction(TR::InstOpCode::Mnemonic op, TR::Node *, TR::Register * reg1, TR::Register * mreg, TR::MemoryReference * mr, TR::RegisterDependencyConditions *deps, TR::CodeGenerator *cg, OMR::X86::Encoding encoding = OMR::X86::Default);
+
+TR::X86MemMaskRegInstruction  * generateMemMaskRegInstruction(TR::InstOpCode::Mnemonic op, TR::Node *node, TR::MemoryReference  *mr, TR::Register * mreg, TR::Register *sreg, TR::CodeGenerator *cg, OMR::X86::Encoding encoding = OMR::X86::Default);
+TR::X86MemMaskRegInstruction  * generateMemMaskRegInstruction(TR::InstOpCode::Mnemonic op, TR::Node *node, TR::MemoryReference  *mr, TR::Register * mreg, TR::Register *reg1, TR::RegisterDependencyConditions  *deps, TR::CodeGenerator *cg, OMR::X86::Encoding encoding = OMR::X86::Default);
 
 TR::X86ImmSnippetInstruction  * generateImmSnippetInstruction(TR::InstOpCode::Mnemonic op, TR::Node *, int32_t imm, TR::UnresolvedDataSnippet *, TR::CodeGenerator *cg);
 
