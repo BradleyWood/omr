@@ -2252,6 +2252,77 @@ class X86RegRegMemInstruction : public TR::X86RegMemInstruction
 #endif
    };
 
+class X86RegMaskMemInstruction : public TR::X86RegMemInstruction
+   {
+   TR::Register *_maskRegister;
+
+   public:
+
+   X86RegMaskMemInstruction(TR::InstOpCode::Mnemonic op,
+                           TR::Node *node,
+                           TR::Register *treg,
+                           TR::Register *mreg,
+                           TR::MemoryReference *mr,
+                           TR::CodeGenerator   *cg,
+                           OMR::X86::Encoding encoding = OMR::X86::Default)
+   : TR::X86RegMemInstruction(op, node, treg, mr, cg, encoding), _maskRegister(mreg)
+      {
+      useRegister(mreg);
+      }
+
+   X86RegMaskMemInstruction(TR::InstOpCode::Mnemonic op,
+                           TR::Node *node,
+                           TR::Register *treg,
+                           TR::Register *mreg,
+                           TR::MemoryReference *mr,
+                           TR::RegisterDependencyConditions *cond,
+                           TR::CodeGenerator *cg,
+                           OMR::X86::Encoding encoding = OMR::X86::Default)
+   : TR::X86RegMemInstruction(op, node, treg, mr, cond, cg, encoding), _maskRegister(mreg)
+      {
+      useRegister(mreg);
+      }
+
+   virtual char *description() { return "X86RegMaskMem"; }
+
+   virtual Kind getKind() { return IsRegMaskMem; }
+
+   /** \brief
+   *    Getter of the write mask register
+   *
+   *  \return
+   *    The write mask register
+   */
+   virtual TR::Register *getMaskRegister()          {return _maskRegister;}
+   /** \brief
+   *    Setter of the write mask register
+   *
+   *  \param sr
+   *    The new second source register
+   *
+   *  \return
+   *    The write mask register
+   */
+   TR::Register *setMaskRegister(TR::Register *mr) {return (_maskRegister = mr);}
+
+   /** \brief
+   *    Fill operand bytes
+   *
+   *  \param cursor
+   *    The address to the first operand byte
+   *
+   *  \return
+   *    The address after last operand byte
+   */
+   virtual uint8_t* generateOperand(uint8_t* cursor);
+   virtual void assignRegisters(TR_RegisterKinds kindsToBeAssigned);
+   virtual bool refsRegister(TR::Register *reg);
+   virtual bool usesRegister(TR::Register *reg);
+
+#ifdef DEBUG
+   virtual uint32_t getNumOperandReferencedGPRegisters() { return 2 + getMemoryReference()->getNumMRReferencedGPRegisters(); }
+#endif
+   };
 
 class X86FPRegInstruction : public TR::X86RegInstruction
    {
@@ -3181,6 +3252,9 @@ TR::X86RegMaskRegRegInstruction  * generateRegMaskRegRegInstruction(TR::InstOpCo
 
 TR::X86RegMaskRegInstruction  * generateRegMaskRegInstruction(TR::InstOpCode::Mnemonic op, TR::Node *, TR::Register * reg1, TR::Register * mreg, TR::Register * reg2, TR::CodeGenerator *cg, OMR::X86::Encoding encoding = OMR::X86::Default);
 TR::X86RegMaskRegInstruction  * generateRegMaskRegInstruction(TR::InstOpCode::Mnemonic op, TR::Node *, TR::Register * reg1, TR::Register * mreg, TR::Register * reg2, TR::RegisterDependencyConditions *deps, TR::CodeGenerator *cg, OMR::X86::Encoding encoding = OMR::X86::Default);
+
+TR::X86RegMaskMemInstruction  * generateRegMaskMemInstruction(TR::InstOpCode::Mnemonic op, TR::Node *, TR::Register * reg1, TR::Register * mreg, TR::MemoryReference * mr, TR::CodeGenerator *cg, OMR::X86::Encoding encoding = OMR::X86::Default);
+TR::X86RegMaskMemInstruction  * generateRegMaskMemInstruction(TR::InstOpCode::Mnemonic op, TR::Node *, TR::Register * reg1, TR::Register * mreg, TR::MemoryReference * mr, TR::RegisterDependencyConditions *deps, TR::CodeGenerator *cg, OMR::X86::Encoding encoding = OMR::X86::Default);
 
 TR::X86ImmSnippetInstruction  * generateImmSnippetInstruction(TR::InstOpCode::Mnemonic op, TR::Node *, int32_t imm, TR::UnresolvedDataSnippet *, TR::CodeGenerator *cg);
 
