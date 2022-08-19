@@ -214,8 +214,8 @@ void generateIO(TR::ILOpCode scalarOpcode, TR::VectorLength vl, void *output, vo
 }
 
 void generateAndExecuteVectorTest(TR::ILOpCode vectorOpcode, void *expected, void *inputA, void *inputB, void *inputC) {
-    TR::VectorLength vl = vectorOpcode.getType().getVectorLength();
-    TR::DataType elementType = vectorOpcode.getType().getVectorElementType();
+    TR::VectorLength vl = (vectorOpcode.isVectorReduction() ? vectorOpcode.getVectorResultDataType() : vectorOpcode.getType()).getVectorLength();
+    TR::DataType elementType = vectorOpcode.isVectorReduction() ? vectorOpcode.getType() : vectorOpcode.getType().getVectorElementType();
     TR::DataType vt = TR::DataType::createVectorType(elementType.getDataType(), vl);
     TR::ILOpCode loadOp = TR::ILOpCode::createVectorOpCode(TR::vloadi, vt);
     TR::ILOpCode storeOp = TR::ILOpCode::createVectorOpCode(TR::vstorei, vt);
@@ -811,6 +811,7 @@ INSTANTIATE_TEST_CASE_P(BinaryFloatNaNTest, BinaryDataDrivenFloatTest, ::testing
         {   10,  0.1, FNAN,  5,   10, 25.5, FNAN,  5,   10,  0.1, FNAN,  5,   10, 55.1, FNAN,  5},
     })
 )));
+
 INSTANTIATE_TEST_CASE_P(TarnaryFloatNaNInfTest, TernaryDataDrivenFloatTest, ::testing::ValuesIn(*TRTest::MakeVector<std::tuple<TR::VectorOperation, TernaryFloatTest>>(
     std::make_tuple(TR::vfma, TernaryFloatTest {
         { FNAN, 1, 2,  FINF,  -FINF, 35e35,  FINF, FNAN, FNAN, FNAN, -FINF,  FNAN, FNAN,  FNAN, FNAN, FNAN},
@@ -830,11 +831,89 @@ INSTANTIATE_TEST_CASE_P(TarnaryFloatNaNInfTest, TernaryDataDrivenFloatTest, ::te
         {  10e10,    2,    0,     1},
         {      0, FNAN, FINF,  FINF}
     }),
-    std::make_tuple(TR::vfma, TernaryFloatTest {
-        {   FINF, FNAN, -FINF,  FNAN},
-        {  35e35,    1,  FINF,  FINF},
-        {  10e10,    2, -FINF,     1},
-        {      0, FNAN,     0, -FINF}
+    std::make_tuple(TR::vfma, TernaryFloatTest{
+        {  FINF, FNAN, -FINF,  FNAN},
+        { 35e35,    1,  FINF,  FINF},
+        { 10e10,    2, -FINF,     1},
+        {     0, FNAN,     0, -FINF}
+    })
+)));
+
+INSTANTIATE_TEST_CASE_P(Float128NaNReductionTest, BinaryDataDriven128FloatTest, ::testing::ValuesIn(*TRTest::MakeVector<std::tuple<TR::VectorOperation, BinaryFloatTest>>(
+    std::make_tuple(TR::vreductionAdd, BinaryFloatTest {
+        { 10 },
+        { 2, 2, 4, 2},
+        { },
+    }),
+    std::make_tuple(TR::vreductionAdd, BinaryFloatTest {
+        { FNAN },
+        { FNAN, 2, 4, 2},
+        { },
+    }),
+    std::make_tuple(TR::vreductionAdd, BinaryFloatTest {
+        { FNAN },
+        { 2, FNAN, 4, 5},
+        { },
+    }),
+    std::make_tuple(TR::vreductionAdd, BinaryFloatTest {
+        { FNAN },
+        { 2, 3, FNAN, 5},
+        { },
+    }),
+    std::make_tuple(TR::vreductionAdd, BinaryFloatTest {
+        { FNAN },
+        { 2, 3, 4, FNAN},
+        { },
+    }),
+    std::make_tuple(TR::vreductionAdd, BinaryFloatTest {
+        { FINF },
+        { 25e37, 25e37, 25e37, 25e37},
+        { },
+    }),
+    std::make_tuple(TR::vreductionAdd, BinaryFloatTest {
+        { FNAN },
+        { FINF, 10, 100, -FINF},
+        { },
+    }),
+    std::make_tuple(TR::vreductionAdd, BinaryFloatTest {
+        { FNAN },
+        { 1, FINF, 1, -FINF},
+        { },
+    }),
+    std::make_tuple(TR::vreductionAdd, BinaryFloatTest {
+        { FNAN },
+        { FINF, 2, -FINF, 4},
+        { },
+    }),
+    std::make_tuple(TR::vreductionMin, BinaryFloatTest {
+        { FNAN },
+        { 2, FNAN, 5, FNAN},
+        { },
+    }),
+    std::make_tuple(TR::vreductionMin, BinaryFloatTest {
+        { 4 },
+        { 4, 23, 51, 5},
+        { },
+    }),
+    std::make_tuple(TR::vreductionMin, BinaryFloatTest {
+        { FNAN },
+        { FNAN, 2, 4, 2},
+        { },
+    }),
+    std::make_tuple(TR::vreductionMin, BinaryFloatTest {
+        { FNAN },
+        { 2, FNAN, 4, 5},
+        { },
+    }),
+    std::make_tuple(TR::vreductionMin, BinaryFloatTest {
+        { FNAN },
+        { 6, 3, FNAN, 5},
+        { },
+    }),
+    std::make_tuple(TR::vreductionMin, BinaryFloatTest {
+        { FNAN },
+        { 7, 3, 4, FNAN},
+        { },
     })
 )));
 #endif
