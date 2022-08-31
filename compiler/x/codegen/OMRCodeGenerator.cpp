@@ -1008,6 +1008,10 @@ bool OMR::X86::CodeGenerator::getSupportsOpCodeForAutoSIMD(TR::CPU *cpu, TR::ILO
          if (et.isFloatingPoint() && ot.getVectorLength() == TR::VectorLength512)
             return false;
          break;
+      case TR::vdiv:
+         if (ot.getVectorLength() == TR::VectorLength128 && et == TR::Int32)
+            return true;
+         break;
       case TR::vabs:
          if (et.isFloatingPoint())
             {

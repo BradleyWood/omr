@@ -1502,7 +1502,58 @@ OMR::X86::AMD64::TreeEvaluator::vmulEvaluator(TR::Node *node, TR::CodeGenerator 
 TR::Register*
 OMR::X86::AMD64::TreeEvaluator::vdivEvaluator(TR::Node *node, TR::CodeGenerator *cg)
    {
-   return TR::TreeEvaluator::vectorBinaryArithmeticEvaluator(node, cg);
+   if (node->getType().getVectorElementType().isFloatingPoint())
+      {
+      return TR::TreeEvaluator::vectorBinaryArithmeticEvaluator(node, cg);
+      }
+
+   TR::Node *lhs = node->getChild(0);
+   TR::Node *rhs = node->getChild(1);
+
+   TR::Register *lhsReg = cg->evaluate(lhs);
+   TR::Register *rhsReg = cg->evaluate(rhs);
+
+   TR::InstOpCode extractOp = TR::InstOpCode::PEXTRDRegReg;
+   TR::InstOpCode insertOp = TR::InstOpCode::PINSRDRegReg;
+   TR::InstOpCode divOp = TR::InstOpCode::IDIV4AccReg;
+
+   TR::RegisterDependencyConditions *deps = generateRegisterDependencyConditions(0, 6, cg);
+   TR::LabelSymbol *label = generateLabelSymbol(cg);
+
+   TR::Register *result = cg->allocateRegister(TR_VRF);
+   TR::Register *numerator = cg->allocateRegister(TR_GPR);
+   TR::Register *edxReg = cg->allocateRegister(TR_GPR);
+   TR::Register *denominator = cg->allocateRegister(TR_GPR);
+
+   deps->addPostCondition(numerator, TR::RealRegister::RegNum::eax, cg);
+   deps->addPostCondition(edxReg, TR::RealRegister::RegNum::edx, cg);
+   deps->addPostCondition(denominator, TR::RealRegister::ecx, cg);
+   deps->addPostCondition(lhsReg, TR::RealRegister::NoReg, cg);
+   deps->addPostCondition(rhsReg, TR::RealRegister::NoReg, cg);
+   deps->addPostCondition(result, TR::RealRegister::NoReg, cg);
+   deps->stopAddingConditions();
+
+   generateRegRegInstruction(TR::InstOpCode::XORRegReg(), node, edxReg, edxReg, cg);
+
+   for (int i = 0; i < 4; i++)
+      {
+      generateRegRegImmInstruction(extractOp.getMnemonic(), node, numerator, lhsReg, i, cg, OMR::X86::Legacy);
+      generateRegRegImmInstruction(extractOp.getMnemonic(), node, denominator, rhsReg, i, cg, OMR::X86::Legacy);
+
+      generateRegRegInstruction(divOp.getMnemonic(), node, numerator, denominator, cg);
+      generateRegRegImmInstruction(insertOp.getMnemonic(), node, result, numerator, i, cg, OMR::X86::Legacy);
+      }
+
+   generateLabelInstruction(TR::InstOpCode::label, node, label, deps, cg);
+
+   cg->stopUsingRegister(numerator);
+   cg->stopUsingRegister(denominator);
+   cg->stopUsingRegister(edxReg);
+
+   node->setRegister(result);
+   cg->decReferenceCount(lhs);
+   cg->decReferenceCount(rhs);
+   return result;
    }
 
 TR::Register*
