@@ -4832,6 +4832,135 @@ TR::Register* OMR::X86::TreeEvaluator::SIMDreductionEvaluator(TR::Node* node, TR
    return fprReg;
    }
 
+TR::Register*
+OMR::X86::TreeEvaluator::unaryVectorMaskHelper(TR::InstOpCode opcode,
+                                               OMR::X86::Encoding encoding,
+                                               TR::Node *node,
+                                               TR::Register *resultReg,
+                                               TR::Register *valueReg,
+                                               TR::Register *maskReg,
+                                               TR::CodeGenerator *cg)
+   {
+   TR_ASSERT_FATAL(encoding != OMR::X86::Bad, "No suitable encoding method for opcode");
+   bool vectorMask = maskReg->getKind() == TR_VRF;
+   TR::Register *tmpReg = vectorMask ? cg->allocateRegister(TR_VRF) : NULL;
+
+   if (encoding == OMR::X86::Legacy || vectorMask)
+      {
+      generateRegRegInstruction(opcode.getMnemonic(), node, tmpReg, valueReg, cg, encoding);
+      TR_ASSERT_FATAL(vectorMask, "Native vector masking not supported");
+      generateRegRegInstruction(TR::InstOpCode::MOVDQURegReg, node, resultReg, valueReg, cg, encoding);
+      vectorMergeMaskHelper(node, resultReg, tmpReg, maskReg, cg);
+      cg->stopUsingRegister(tmpReg);
+      return resultReg;
+      }
+   else
+      {
+      generateRegRegInstruction(TR::InstOpCode::MOVDQURegReg, node, resultReg, valueReg, cg, encoding);
+      generateRegMaskRegInstruction(opcode.getMnemonic(), node, resultReg, maskReg, valueReg, cg, encoding);
+      }
+
+   return resultReg;
+   }
+
+TR::Register*
+OMR::X86::TreeEvaluator::ternaryVectorMaskHelper(TR::InstOpCode opcode,
+                                                 OMR::X86::Encoding encoding,
+                                                 TR::Node *node,
+                                                 TR::Register *resultReg,
+                                                 TR::Register *lhsReg,
+                                                 TR::Register *middleReg,
+                                                 TR::Register *rhsReg,
+                                                 TR::Register *maskReg,
+                                                 TR::CodeGenerator *cg)
+   {
+   TR_ASSERT_FATAL(encoding != OMR::X86::Bad, "No suitable encoding method for opcode");
+   TR_ASSERT_FATAL(encoding != OMR::X86::Legacy, "Legacy SSE encoding does not support 3-operand instructions");
+   bool vectorMask = maskReg->getKind() == TR_VRF;
+   TR::Register *tmpReg = vectorMask ? cg->allocateRegister(TR_VRF) : NULL;
+
+   generateRegRegInstruction(TR::InstOpCode::MOVDQURegReg, node, resultReg, lhsReg, cg, encoding);
+
+   if (vectorMask)
+      {
+      generateRegRegInstruction(TR::InstOpCode::MOVDQURegReg, node, tmpReg, lhsReg, cg);
+      generateRegRegRegInstruction(opcode.getMnemonic(), node, tmpReg, middleReg, rhsReg, cg, encoding);
+      vectorMergeMaskHelper(node, resultReg, tmpReg, maskReg, cg);
+      cg->stopUsingRegister(tmpReg);
+      return resultReg;
+      }
+   else
+      {
+      generateRegMaskRegRegInstruction(opcode.getMnemonic(), node, resultReg, maskReg, middleReg, rhsReg, cg, encoding);
+      }
+
+   return resultReg;
+   }
+
+TR::Register*
+OMR::X86::TreeEvaluator::vectorMergeMaskHelper(TR::Node *node,
+                                               TR::Register *resultReg,
+                                               TR::Register *srcReg,
+                                               TR::Register *maskReg,
+                                               TR::CodeGenerator *cg,
+                                               bool zeroMask)
+   {
+   TR::VectorLength vl = node->getDataType().getVectorLength();
+
+   if (maskReg->getKind() == TR_VRF)
+      {
+      TR_ASSERT_FATAL(vl != TR::VectorLength512, "512-bit vector masking should not be emulated");
+
+      // The mask register is a vector, therefore we must emulate masking
+      // 'and' away lanes from the src register that will not be written to the result register
+      // 'Or' the mask register into the result register
+      // 'zero' out bits we want to overwrite with xor
+      // 'or' the vectors together
+
+      TR::InstOpCode andOpcode = TR::InstOpCode::PANDRegReg;
+      TR::InstOpCode orOpcode = TR::InstOpCode::PORRegReg;
+      TR::InstOpCode xorOpcode = TR::InstOpCode::PXORRegReg;
+
+      OMR::X86::Encoding andEncoding = andOpcode.getSIMDEncoding(&cg->comp()->target().cpu, vl);
+      OMR::X86::Encoding orEncoding = orOpcode.getSIMDEncoding(&cg->comp()->target().cpu, vl);
+      OMR::X86::Encoding xorEncoding = xorOpcode.getSIMDEncoding(&cg->comp()->target().cpu, vl);
+
+      TR_ASSERT_FATAL(andEncoding != OMR::X86::Bad, "No suitable encoding method for 'and' opcode");
+      TR_ASSERT_FATAL(orEncoding != OMR::X86::Bad, "No suitable encoding method for 'or' opcode");
+      TR_ASSERT_FATAL(xorEncoding != OMR::X86::Bad, "No suitable encoding method for 'xor' opcode");
+
+      if (zeroMask)
+         {
+         if (cg->comp()->target().cpu.supportsAVX() && andEncoding != OMR::X86::Legacy)
+            {
+            generateRegRegRegInstruction(andOpcode.getMnemonic(), node, resultReg, srcReg, maskReg, cg, andEncoding);
+            }
+         else
+            {
+            TR_ASSERT_FATAL(vl == TR::VectorLength128, "Can only merge 128-bit vectors using SSE");
+            generateRegRegInstruction(TR::InstOpCode::MOVDQURegReg, node, resultReg, srcReg, cg, OMR::X86::Legacy);
+            generateRegRegInstruction(andOpcode.getMnemonic(), node, resultReg, maskReg, cg, OMR::X86::Legacy);
+            }
+         }
+      else
+         {
+         generateRegRegInstruction(andOpcode.getMnemonic(), node, srcReg, maskReg, cg, andEncoding);
+         generateRegRegInstruction(orOpcode.getMnemonic(), node, resultReg, maskReg, cg, orEncoding);
+         generateRegRegInstruction(xorOpcode.getMnemonic(), node, resultReg, maskReg, cg, xorEncoding);
+         generateRegRegInstruction(orOpcode.getMnemonic(), node, resultReg, srcReg, cg, orEncoding);
+         }
+      }
+   else
+      {
+      TR_ASSERT_FATAL(cg->comp()->target().cpu.supportsFeature(OMR_FEATURE_X86_AVX512F), "Native merge masking requires AVX-512");
+      TR::InstOpCode movOpcode = TR::InstOpCode::MOVDQURegReg;
+      OMR::X86::Encoding movEncoding = movOpcode.getSIMDEncoding(&cg->comp()->target().cpu, vl);
+      generateRegMaskRegInstruction(movOpcode.getMnemonic(), node, resultReg, maskReg, srcReg, cg, movEncoding, zeroMask);
+      }
+
+   return resultReg;
+   }
+
 // vector evaluators
 TR::Register*
 OMR::X86::TreeEvaluator::vmulEvaluator(TR::Node *node, TR::CodeGenerator *cg)
