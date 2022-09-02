@@ -4145,18 +4145,22 @@ TR::InstOpCode OMR::X86::TreeEvaluator::getNativeSIMDOpcode(TR::ILOpCodes opcode
 
    if (OMR::ILOpCode::isVectorOpCode(opcode))
       {
-      bool isMaskOp = false;
+      bool isMaskOp = OMR::ILOpCode(opcode).isVectorMasked();
       switch (OMR::ILOpCode::getVectorOperation(opcode))
          {
+         case TR::vmadd:
          case TR::vadd:
             binaryOp = BinaryArithmeticAdd;
             break;
+         case TR::vmsub:
          case TR::vsub:
             binaryOp = BinaryArithmeticSub;
             break;
+         case TR::vmmul:
          case TR::vmul:
             binaryOp = BinaryArithmeticMul;
             break;
+         case TR::vmdiv:
          case TR::vdiv:
             binaryOp = BinaryArithmeticDiv;
             break;
@@ -4175,15 +4179,19 @@ TR::InstOpCode OMR::X86::TreeEvaluator::getNativeSIMDOpcode(TR::ILOpCodes opcode
             binaryOp = BinaryArithmeticXor;
             if (!isMaskOp) elementType = TR::Int32;
             break;
+         case TR::vmmin:
          case TR::vmin:
             binaryOp = BinaryArithmeticMin;
             break;
+         case TR::vmmax:
          case TR::vmax:
             binaryOp = BinaryArithmeticMax;
             break;
+         case TR::vmabs:
          case TR::vabs:
             unaryOp = UnaryArithmeticAbs;
             break;
+         case TR::vmsqrt:
          case TR::vsqrt:
             unaryOp = UnaryArithmeticSqrt;
             break;
@@ -4261,9 +4269,10 @@ TR::Register* OMR::X86::TreeEvaluator::vectorBinaryArithmeticEvaluator(TR::Node*
    TR::DataType et = type.getVectorElementType();
    TR::Node* lhs = node->getChild(0);
    TR::Node* rhs = node->getChild(1);
+   TR::Node* mask = node->getOpCode().isVectorMasked() ? node->getChild(2) : NULL;
    TR::Register *tmpNaNReg = NULL;
 
-   bool useRegMemForm = cg->comp()->target().cpu.supportsAVX();
+   bool useRegMemForm = cg->comp()->target().cpu.supportsAVX() && !mask;
 
    if (useRegMemForm)
       {
@@ -4303,6 +4312,7 @@ TR::Register* OMR::X86::TreeEvaluator::vectorBinaryArithmeticEvaluator(TR::Node*
 
    TR::Register *lhsReg = cg->evaluate(lhs);
    TR::Register *rhsReg = useRegMemForm ? NULL : cg->evaluate(rhs);
+   TR::Register *maskReg = mask ? cg->evaluate(mask) : NULL;
 
    TR_ASSERT_FATAL_WITH_NODE(lhs, lhsReg->getKind() == TR_VRF, "Left child of vector operation must be a vector");
    TR_ASSERT_FATAL_WITH_NODE(lhs, rhsReg == NULL || rhsReg->getKind() == TR_VRF, "Right child of vector operation must be a vector");
@@ -4324,7 +4334,14 @@ TR::Register* OMR::X86::TreeEvaluator::vectorBinaryArithmeticEvaluator(TR::Node*
       else
          {
          TR::Register *rSrcReg = tmpNaNReg ? vectorFPNaNHelper(node, tmpNaNReg, lhsReg, rhsReg, NULL, cg) : rhsReg;
-         generateRegRegRegInstruction(nativeOpcode.getMnemonic(), node, resultReg, lhsReg, rSrcReg, cg, simdEncoding);
+         if (maskReg)
+            {
+            binaryVectorMaskHelper(nativeOpcode, simdEncoding, node, resultReg, lhsReg, rSrcReg, maskReg, cg);
+            }
+         else
+            {
+            generateRegRegRegInstruction(nativeOpcode.getMnemonic(), node, resultReg, lhsReg, rSrcReg, cg, simdEncoding);
+            }
          }
       }
    else
@@ -4336,6 +4353,9 @@ TR::Register* OMR::X86::TreeEvaluator::vectorBinaryArithmeticEvaluator(TR::Node*
 
    if (tmpNaNReg)
       cg->stopUsingRegister(tmpNaNReg);
+
+   if (mask)
+      cg->decReferenceCount(mask);
 
    node->setRegister(resultReg);
    cg->decReferenceCount(lhs);
@@ -5158,7 +5178,7 @@ OMR::X86::TreeEvaluator::vmabsEvaluator(TR::Node *node, TR::CodeGenerator *cg)
 TR::Register*
 OMR::X86::TreeEvaluator::vmaddEvaluator(TR::Node *node, TR::CodeGenerator *cg)
    {
-   return TR::TreeEvaluator::unImpOpEvaluator(node, cg);
+   return TR::TreeEvaluator::vectorBinaryArithmeticEvaluator(node, cg);
    }
 
 TR::Register*
@@ -5206,7 +5226,7 @@ OMR::X86::TreeEvaluator::vmcmpleEvaluator(TR::Node *node, TR::CodeGenerator *cg)
 TR::Register*
 OMR::X86::TreeEvaluator::vmdivEvaluator(TR::Node *node, TR::CodeGenerator *cg)
    {
-   return TR::TreeEvaluator::unImpOpEvaluator(node, cg);
+   return TR::TreeEvaluator::vectorBinaryArithmeticEvaluator(node, cg);
    }
 
 TR::Register*
@@ -5230,19 +5250,19 @@ OMR::X86::TreeEvaluator::vmloadiEvaluator(TR::Node *node, TR::CodeGenerator *cg)
 TR::Register*
 OMR::X86::TreeEvaluator::vmmaxEvaluator(TR::Node *node, TR::CodeGenerator *cg)
    {
-   return TR::TreeEvaluator::unImpOpEvaluator(node, cg);
+   return TR::TreeEvaluator::vectorBinaryArithmeticEvaluator(node, cg);
    }
 
 TR::Register*
 OMR::X86::TreeEvaluator::vmminEvaluator(TR::Node *node, TR::CodeGenerator *cg)
    {
-   return TR::TreeEvaluator::unImpOpEvaluator(node, cg);
+   return TR::TreeEvaluator::vectorBinaryArithmeticEvaluator(node, cg);
    }
 
 TR::Register*
 OMR::X86::TreeEvaluator::vmmulEvaluator(TR::Node *node, TR::CodeGenerator *cg)
    {
-   return TR::TreeEvaluator::unImpOpEvaluator(node, cg);
+   return TR::TreeEvaluator::vectorBinaryArithmeticEvaluator(node, cg);
    }
 
 TR::Register*
@@ -5338,7 +5358,7 @@ OMR::X86::TreeEvaluator::vmstoreiEvaluator(TR::Node *node, TR::CodeGenerator *cg
 TR::Register*
 OMR::X86::TreeEvaluator::vmsubEvaluator(TR::Node *node, TR::CodeGenerator *cg)
    {
-   return TR::TreeEvaluator::unImpOpEvaluator(node, cg);
+   return TR::TreeEvaluator::vectorBinaryArithmeticEvaluator(node, cg);
    }
 
 TR::Register*
