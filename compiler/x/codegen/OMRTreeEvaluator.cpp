@@ -5172,7 +5172,7 @@ OMR::X86::TreeEvaluator::vreductionOrUncheckedEvaluator(TR::Node *node, TR::Code
 TR::Register*
 OMR::X86::TreeEvaluator::vmabsEvaluator(TR::Node *node, TR::CodeGenerator *cg)
    {
-   return TR::TreeEvaluator::unImpOpEvaluator(node, cg);
+   return TR::TreeEvaluator::unaryVectorArithmeticEvaluator(node, cg);
    }
 
 TR::Register*
@@ -5346,7 +5346,7 @@ OMR::X86::TreeEvaluator::vmreductionXorEvaluator(TR::Node *node, TR::CodeGenerat
 TR::Register*
 OMR::X86::TreeEvaluator::vmsqrtEvaluator(TR::Node *node, TR::CodeGenerator *cg)
    {
-   return TR::TreeEvaluator::unImpOpEvaluator(node, cg);
+   return TR::TreeEvaluator::unaryVectorArithmeticEvaluator(node, cg);
    }
 
 TR::Register*
