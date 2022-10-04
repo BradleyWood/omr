@@ -1310,24 +1310,29 @@ TR::Node *TR_VectorAPIExpansion::transformLoadFromArray(TR_VectorAPIExpansion *o
       else if (objType == Mask)
          {
          TR::ILOpCodes loadOpCode;
+         TR::DataType symRefType;
 
          switch (numLanes)
             {
             case 1:
                op = TR::ILOpCode::createVectorOpCode(TR::b2m, vectorType);
                loadOpCode = TR::bloadi;
+               symRefType = TR::Int8;
                break;
             case 2:
                op = TR::ILOpCode::createVectorOpCode(TR::s2m, vectorType);
                loadOpCode = TR::sloadi;
+               symRefType = TR::Int16;
                break;
             case 4:
                op = TR::ILOpCode::createVectorOpCode(TR::i2m, vectorType);
                loadOpCode = TR::iloadi;
+               symRefType = TR::Int32;
                break;
             case 8:
                op = TR::ILOpCode::createVectorOpCode(TR::l2m, vectorType);
                loadOpCode = TR::lloadi;
+               symRefType = TR::Int64;
                break;
             case 16:
             case 32:
@@ -1337,6 +1342,7 @@ TR::Node *TR_VectorAPIExpansion::transformLoadFromArray(TR_VectorAPIExpansion *o
                TR::DataType sourceType = TR::DataType::createVectorType(TR::Int8, vectorLength);
                op = TR::ILOpCode::createVectorOpCode(TR::v2m, sourceType, vectorType);
                loadOpCode = TR::ILOpCode::createVectorOpCode(TR::vloadi, sourceType);
+               symRefType = sourceType;
                break;
                }
             default:
@@ -1346,8 +1352,9 @@ TR::Node *TR_VectorAPIExpansion::transformLoadFromArray(TR_VectorAPIExpansion *o
 
          TR::Node::recreate(node, op);
 
-         // need to alias with boolean array elements, so creating byte array shadow
-         TR::SymbolReference *symRef = comp->getSymRefTab()->findOrCreateArrayShadowSymbolRef(TR::Int8, NULL);
+         // need to alias with boolean array elements, so creating unsafe shadow
+         TR::SymbolReference *symRef = comp->getSymRefTab()->findOrCreateUnsafeSymbolRef(symRefType);
+         
          TR::Node *loadNode = TR::Node::createWithSymRef(node, loadOpCode, 1, symRef);
          loadNode->setAndIncChild(0, aladdNode);
          node->setAndIncChild(0, loadNode);
