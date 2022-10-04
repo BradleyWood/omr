@@ -1255,7 +1255,7 @@ TR::Node *TR_VectorAPIExpansion::transformLoadFromArray(TR_VectorAPIExpansion *o
    TR::Compilation *comp = opt->comp();
 
    int32_t elementSize = OMR::DataType::getSize(elementType);
-   TR::Node *aladdNode = generateAddressNode(array, arrayIndex, elementSize);
+   TR::Node *aladdNode = generateAddressNode(array, arrayIndex, objType == Mask ? 1 : elementSize);
 
    anchorOldChildren(opt, treeTop, node);
 
