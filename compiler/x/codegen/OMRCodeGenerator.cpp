@@ -1023,6 +1023,9 @@ bool OMR::X86::CodeGenerator::getSupportsOpCodeForAutoSIMD(TR::CPU *cpu, TR::ILO
    // implemented vector opcodes
    switch (opcode.getVectorOperation())
       {
+      case TR::mload:
+      case TR::mloadi:
+         return cpu->supportsFeature(OMR_FEATURE_X86_SSE4_1);
       case TR::vmin:
       case TR::vmax:
          if (et.isFloatingPoint() && ot.getVectorLength() == TR::VectorLength512)
