@@ -4610,31 +4610,31 @@ OMR::X86::TreeEvaluator::mRegStoreEvaluator(TR::Node *node, TR::CodeGenerator *c
 TR::Register*
 OMR::X86::TreeEvaluator::b2mEvaluator(TR::Node *node, TR::CodeGenerator *cg)
    {
-   return TR::TreeEvaluator::unImpOpEvaluator(node, cg);
+   return TR::TreeEvaluator::arrayToVectorMaskHelper(node, cg);
    }
 
 TR::Register*
 OMR::X86::TreeEvaluator::s2mEvaluator(TR::Node *node, TR::CodeGenerator *cg)
    {
-   return TR::TreeEvaluator::unImpOpEvaluator(node, cg);
+   return TR::TreeEvaluator::arrayToVectorMaskHelper(node, cg);
    }
 
 TR::Register*
 OMR::X86::TreeEvaluator::i2mEvaluator(TR::Node *node, TR::CodeGenerator *cg)
    {
-   return TR::TreeEvaluator::unImpOpEvaluator(node, cg);
+   return TR::TreeEvaluator::arrayToVectorMaskHelper(node, cg);
    }
 
 TR::Register*
 OMR::X86::TreeEvaluator::l2mEvaluator(TR::Node *node, TR::CodeGenerator *cg)
    {
-   return TR::TreeEvaluator::unImpOpEvaluator(node, cg);
+   return TR::TreeEvaluator::arrayToVectorMaskHelper(node, cg);
    }
 
 TR::Register*
 OMR::X86::TreeEvaluator::v2mEvaluator(TR::Node *node, TR::CodeGenerator *cg)
    {
-   return TR::TreeEvaluator::unImpOpEvaluator(node, cg);
+   return TR::TreeEvaluator::arrayToVectorMaskHelper(node, cg);
    }
 
 TR::Register*
@@ -4884,6 +4884,52 @@ OMR::X86::TreeEvaluator::unaryVectorMaskHelper(TR::InstOpCode opcode,
    }
 
 TR::Register*
+OMR::X86::TreeEvaluator::binaryVectorMaskHelper(TR::InstOpCode opcode,
+                                                OMR::X86::Encoding encoding,
+                                                TR::Node *node,
+                                                TR::Register *resultReg,
+                                                TR::Register *lhsReg,
+                                                TR::Register *rhsReg,
+                                                TR::Register *maskReg,
+                                                TR::CodeGenerator *cg)
+   {
+   TR_ASSERT_FATAL(encoding != OMR::X86::Bad, "No suitable encoding method for opcode");
+   bool vectorMask = maskReg->getKind() == TR_VRF;
+   TR::Register *tmpReg = vectorMask ? cg->allocateRegister(TR_VRF) : NULL;
+
+   if (vectorMask)
+      {
+      generateRegRegInstruction(TR::InstOpCode::MOVDQURegReg, node, resultReg, lhsReg, cg, encoding);
+      }
+
+   if (encoding == OMR::X86::Legacy)
+      {
+      generateRegRegInstruction(TR::InstOpCode::MOVDQURegReg, node, tmpReg, lhsReg, cg);
+      generateRegRegInstruction(opcode.getMnemonic(), node, tmpReg, rhsReg, cg, encoding);
+      TR_ASSERT_FATAL(vectorMask, "Native vector masking not supported");
+      vectorMergeMaskHelper(node, resultReg, tmpReg, maskReg, cg);
+      cg->stopUsingRegister(tmpReg);
+      return resultReg;
+      }
+   else if (vectorMask)
+      {
+      generateRegRegRegInstruction(opcode.getMnemonic(), node, tmpReg, lhsReg, rhsReg, cg, encoding);
+      vectorMergeMaskHelper(node, resultReg, tmpReg, maskReg, cg);
+      cg->stopUsingRegister(tmpReg);
+      return resultReg;
+      }
+   else
+      {
+      TR::InstOpCode movOpcode = TR::InstOpCode::MOVDQURegReg;
+      OMR::X86::Encoding movEncoding = movOpcode.getSIMDEncoding(&cg->comp()->target().cpu, node->getDataType().getVectorLength());
+      generateRegRegInstruction(movOpcode.getMnemonic(), node, resultReg, lhsReg, cg, movEncoding);
+      generateRegMaskRegRegInstruction(opcode.getMnemonic(), node, resultReg, maskReg, lhsReg, rhsReg, cg, encoding);
+      }
+
+   return resultReg;
+   }
+
+TR::Register*
 OMR::X86::TreeEvaluator::ternaryVectorMaskHelper(TR::InstOpCode opcode,
                                                  OMR::X86::Encoding encoding,
                                                  TR::Node *node,
@@ -4979,6 +5025,102 @@ OMR::X86::TreeEvaluator::vectorMergeMaskHelper(TR::Node *node,
       }
 
    return resultReg;
+   }
+
+TR::Register*
+OMR::X86::TreeEvaluator::arrayToVectorMaskHelper(TR::Node *node, TR::CodeGenerator *cg)
+   {
+   TR::DataType type = node->getType();
+   TR_ASSERT_FATAL(type.isMask(), "Expected mask type");
+
+   TR::Node *valueNode = node->getChild(0);
+   TR::DataType et = type.getVectorElementType();
+   TR::VectorLength vl = type.getVectorLength();
+   TR::InstOpCode expandOp = TR::InstOpCode::bad;
+   TR::InstOpCode v2mOp = TR::InstOpCode::bad;
+   TR::InstOpCode shiftOp = TR::InstOpCode::PSLLQRegImm1;
+   bool nativeMasking = cg->comp()->target().cpu.supportsFeature(OMR_FEATURE_X86_AVX512F);
+   int32_t shiftAmount = 0;
+
+   switch (et)
+      {
+      case TR::Int8:
+         shiftAmount = 7;
+         v2mOp = TR::InstOpCode::VPMOVB2MRegReg;
+         break;
+      case TR::Int16:
+         shiftAmount = 15;
+         expandOp = TR::InstOpCode::PMOVZXBWRegReg;
+         v2mOp = TR::InstOpCode::VPMOVW2MRegReg;
+         break;
+      case TR::Int32:
+      case TR::Float:
+         shiftAmount = 31;
+         expandOp = TR::InstOpCode::PMOVZXBDRegReg;
+         v2mOp = TR::InstOpCode::VPMOVD2MRegReg;
+         break;
+      case TR::Int64:
+      case TR::Double:
+         shiftAmount = 63;
+         expandOp = TR::InstOpCode::PMOVZXBQRegReg;
+         v2mOp = TR::InstOpCode::VPMOVQ2MRegReg;
+         break;
+      default:
+         TR_ASSERT_FATAL(0, "Unexpected element type");
+      }
+
+   TR::Register *valueNodeReg = cg->evaluate(valueNode);
+   TR::Register *tmpVectorReg = cg->allocateRegister(TR_VRF);
+   TR::Register *valueReg = valueNodeReg;
+
+   if (valueNode->getType().isIntegral())
+      {
+      TR_ASSERT_FATAL(cg->comp()->target().is64Bit(), "arrayToVectorMask not supported on 32-bit");
+      generateRegRegInstruction(TR::InstOpCode::MOVQRegReg8, node, tmpVectorReg, valueNodeReg, cg);
+      valueReg = tmpVectorReg;
+      }
+
+   if (expandOp.getMnemonic() != TR::InstOpCode::bad)
+      {
+      OMR::X86::Encoding expandEncoding = expandOp.getSIMDEncoding(&cg->comp()->target().cpu, vl);
+      TR_ASSERT_FATAL(expandEncoding != OMR::X86::Bad, "No suitable encoding form for pmovzx opcode");
+      generateRegRegInstruction(expandOp.getMnemonic(), node, tmpVectorReg, valueReg, cg, expandEncoding);
+      }
+
+   cg->decReferenceCount(valueNode);
+
+   if (nativeMasking)
+      {
+      TR::Register *result = cg->allocateRegister(TR_VMR);
+      OMR::X86::Encoding v2mEncoding = v2mOp.getSIMDEncoding(&cg->comp()->target().cpu, vl);
+      OMR::X86::Encoding shiftEncoding = shiftOp.getSIMDEncoding(&cg->comp()->target().cpu, vl);
+      TR_ASSERT_FATAL(v2mEncoding != OMR::X86::Bad, "No suitable encoding form for v2m opcode");
+      TR_ASSERT_FATAL(shiftEncoding != OMR::X86::Bad, "No suitable encoding form for psllq opcode");
+
+      generateRegImmInstruction(shiftOp.getMnemonic(), node, tmpVectorReg, shiftAmount, cg, TR_NoRelocation, shiftEncoding);
+      generateRegRegInstruction(v2mOp.getMnemonic(), node, result, tmpVectorReg, cg, v2mEncoding);
+
+      cg->stopUsingRegister(tmpVectorReg);
+      node->setRegister(result);
+      return result;
+      }
+   else
+      {
+      TR::Register *result = cg->allocateRegister(TR_VRF);
+      TR::InstOpCode xorOpcode = TR::InstOpCode::PXORRegReg;
+      TR::InstOpCode subOp = VectorBinaryArithmeticOpCodesForReg[et - 1][BinaryArithmeticSub];
+      OMR::X86::Encoding xorEncoding = xorOpcode.getSIMDEncoding(&cg->comp()->target().cpu, vl);
+      OMR::X86::Encoding subEncoding = subOp.getSIMDEncoding(&cg->comp()->target().cpu, vl);
+      TR_ASSERT_FATAL(xorEncoding != OMR::X86::Bad, "No suitable encoding form for pxor opcode");
+      TR_ASSERT_FATAL(subEncoding != OMR::X86::Bad, "No suitable encoding form for psub opcode");
+
+      generateRegRegInstruction(xorOpcode.getMnemonic(), node, result, result, cg, xorEncoding);
+      generateRegRegInstruction(subOp.getMnemonic(), node, result, tmpVectorReg, cg, subEncoding);
+
+      node->setRegister(result);
+      cg->stopUsingRegister(tmpVectorReg);
+      return result;
+      }
    }
 
 // vector evaluators

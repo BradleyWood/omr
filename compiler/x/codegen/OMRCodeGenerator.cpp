@@ -1036,6 +1036,11 @@ bool OMR::X86::CodeGenerator::getSupportsOpCodeForAutoSIMD(TR::CPU *cpu, TR::ILO
          if (et.isFloatingPoint())
             return false;
          break;
+      case TR::b2m:
+      case TR::s2m:
+      case TR::i2m:
+      case TR::l2m:
+      case TR::v2m:
       case TR::vabs:
          if (et.isFloatingPoint())
             {

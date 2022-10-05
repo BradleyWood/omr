@@ -364,6 +364,14 @@ class OMR_EXTENSIBLE TreeEvaluator: public OMR::TreeEvaluator
                                               TR::Register *valueReg,
                                               TR::Register *maskReg,
                                               TR::CodeGenerator *cg);
+   static TR::Register *binaryVectorMaskHelper(TR::InstOpCode opcode,
+                                               OMR::X86::Encoding encoding,
+                                               TR::Node *node,
+                                               TR::Register *resultReg,
+                                               TR::Register *lhsReg,
+                                               TR::Register *rhsReg,
+                                               TR::Register *maskReg,
+                                               TR::CodeGenerator *cg);
    static TR::Register *ternaryVectorMaskHelper(TR::InstOpCode opcode,
                                                 OMR::X86::Encoding encoding,
                                                 TR::Node *node,
@@ -374,6 +382,7 @@ class OMR_EXTENSIBLE TreeEvaluator: public OMR::TreeEvaluator
                                                 TR::Register *maskReg,
                                                 TR::CodeGenerator *cg);
    static TR::Register *vectorMergeMaskHelper(TR::Node *node, TR::Register *resultReg, TR::Register *srcReg, TR::Register *maskReg, TR::CodeGenerator *cg, bool zeroMask = false);
+   static TR::Register *arrayToVectorMaskHelper(TR::Node *node, TR::CodeGenerator *cg);
 
    // For unary ILOpcodes that can be translated to a single SSE/AVX instruction
    static TR::Register *unaryVectorArithmeticEvaluator(TR::Node *node, TR::CodeGenerator *cg);
