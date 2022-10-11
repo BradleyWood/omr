@@ -1099,3 +1099,73 @@ INSTANTIATE_TEST_CASE_P(Long128ReductionTest, BinaryDataDriven128Int64Test, ::te
     std::make_tuple(TR::vreductionMax, BinaryLongTest { { 100 }, { 100, -100}, {}, }),
     std::make_tuple(TR::vreductionMax, BinaryLongTest { { 9223372036854775804 }, { 9223372036854775801, 9223372036854775804}, {}, })
 )));
+
+TEST_F(VectorTest, V128Int8MStore) {
+
+    auto inputTrees = "(method return= NoType args=[Address,Address]                   "
+                      "  (block                                                        "
+                      "     (mstoreiVector128Int16 offset=0                            "
+                      "         (aload parm=0)                                         "
+                      "            (l2mVector128Int16                                  "
+                      "                 (lloadi (aload parm=1))))                      "
+                      "     (return)))                                                 ";
+
+    auto trees = parseString(inputTrees);
+
+    ASSERT_NOTNULL(trees);
+    //TODO: Re-enable this test on S390 after issue #1843 is resolved.
+    SKIP_ON_S390(KnownBug) << "This test is currently disabled on Z platforms because not all Z platforms have vector support (issue #1843)";
+    SKIP_ON_S390X(KnownBug) << "This test is currently disabled on Z platforms because not all Z platforms have vector support (issue #1843)";
+    SKIP_ON_RISCV(MissingImplementation);
+
+    Tril::DefaultCompiler compiler(trees);
+    ASSERT_EQ(0, compiler.compile()) << "Compilation failed unexpectedly\n" << "Input trees: " << inputTrees;
+
+
+    auto entry_point = compiler.getEntryPoint<void (*)(int8_t[],int8_t[])>();
+    // This test currently assumes 128bit SIMD
+
+    int8_t output[] =  {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    int8_t inputA[8] =  { 1, 0, 0, 0, 1, 1, 0, 0};
+
+    entry_point(output, inputA);
+
+    for (int i = 0; i < (sizeof(output) / sizeof(*output)); i++) {
+        printf("%i ", output[i]);
+    }
+}
+
+TEST_F(VectorTest, VMReduction) {
+
+    auto inputTrees = "(method return= NoType args=[Address,Address,Address]   "
+                      "   (block                                                       "
+                      "      (lstorei (aload parm=0)                     "
+                      "         (vmreductionMinVector512Int64 offset=0                          "
+                      "            (vloadiVector512Int64 (aload parm=1))               "
+                      "            (l2mVector512Int64                                 "
+                      "               (lloadi (aload parm=2)))))                       "
+                      "      (return)))                                                ";
+
+    auto trees = parseString(inputTrees);
+
+    ASSERT_NOTNULL(trees);
+    //TODO: Re-enable this test on S390 after issue #1843 is resolved.
+    SKIP_ON_S390(KnownBug) << "This test is currently disabled on Z platforms because not all Z platforms have vector support (issue #1843)";
+    SKIP_ON_S390X(KnownBug) << "This test is currently disabled on Z platforms because not all Z platforms have vector support (issue #1843)";
+    SKIP_ON_RISCV(MissingImplementation);
+
+    Tril::DefaultCompiler compiler(trees);
+    ASSERT_EQ(0, compiler.compile()) << "Compilation failed unexpectedly\n" << "Input trees: " << inputTrees;
+
+
+    auto entry_point = compiler.getEntryPoint<void (*)(int64_t[], int64_t[], int8_t[])>();
+    // This test currently assumes 128bit SIMD
+
+    int64_t output = 0;
+    int64_t inputA[8] =  { 1, 10, 100, 14, 5005, 9000, -2, -100 };
+    int8_t inputMsk[8] = {0, 1, 1, 0, 1, 1, 0, 1};
+
+    entry_point(&output, inputA, inputMsk);
+
+    printf("%li ", output);
+}
