@@ -1499,24 +1499,31 @@ public:
 
       switch (opcode.getVectorOperation())
          {
+         case TR::vmreductionAdd:
          case TR::vreductionAdd:
             operation = TR::vadd;
             break;
+         case TR::vmreductionMul:
          case TR::vreductionMul:
             operation = TR::vmul;
             break;
+         case TR::vmreductionAnd:
          case TR::vreductionAnd:
             operation = TR::vand;
             break;
+         case TR::vmreductionOr:
          case TR::vreductionOr:
             operation = TR::vor;
             break;
+         case TR::vmreductionXor:
          case TR::vreductionXor:
             operation = TR::vxor;
             break;
+         case TR::vmreductionMin:
          case TR::vreductionMin:
             operation = TR::vmin;
             break;
+         case TR::vmreductionMax:
          case TR::vreductionMax:
             operation = TR::vmax;
             break;
