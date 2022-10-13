@@ -1099,3 +1099,41 @@ INSTANTIATE_TEST_CASE_P(Long128ReductionTest, BinaryDataDriven128Int64Test, ::te
     std::make_tuple(TR::vreductionMax, BinaryLongTest { { 100 }, { 100, -100}, {}, }),
     std::make_tuple(TR::vreductionMax, BinaryLongTest { { 9223372036854775804 }, { 9223372036854775801, 9223372036854775804}, {}, })
 )));
+
+INSTANTIATE_TEST_CASE_P(Int128CmpTest, BinaryDataDriven128Int32Test, ::testing::ValuesIn(*TRTest::MakeVector<std::tuple<TR::VectorOperation, BinaryIntTest>>(
+    std::make_tuple(TR::vcmpeq, BinaryIntTest { { 8 },  { -1, 2, 3, 4}, {0, 1, 2, 50}, })
+)));
+
+TEST_F(VectorTest, VInt32Cmp) {
+
+    auto inputTrees = "(method return= NoType args=[Address,Address,Address]   "
+                      "  (block                                                        "
+                      "     (mstoreiVector128Int32 offset=0                             "
+                      "         (aload parm=0)                                         "
+                      "            (vcmpeqVector128Int32                            "
+                      "                 (vloadiVector128Int32 (aload parm=1))           "
+                      "                 (vloadiVector128Int32 (aload parm=3))))         "
+                      "     (return)))                                                 ";
+
+    auto trees = parseString(inputTrees);
+
+    ASSERT_NOTNULL(trees);
+    //TODO: Re-enable this test on S390 after issue #1843 is resolved.
+    SKIP_ON_S390(KnownBug) << "This test is currently disabled on Z platforms because not all Z platforms have vector support (issue #1843)";
+    SKIP_ON_S390X(KnownBug) << "This test is currently disabled on Z platforms because not all Z platforms have vector support (issue #1843)";
+    SKIP_ON_RISCV(MissingImplementation);
+
+    Tril::DefaultCompiler compiler(trees);
+    ASSERT_EQ(0, compiler.compile()) << "Compilation failed unexpectedly\n" << "Input trees: " << inputTrees;
+
+
+    auto entry_point = compiler.getEntryPoint<void (*)(int32_t[],int32_t[],int32_t [])>();
+    // This test currently assumes 128bit SIMD
+
+    int32_t output[] =  {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    int32_t inputA[] =  {8, -3, 62, 56, -108, -13, 114, -100, 69, -80, 6, 104, 67, 78, 12, -72};
+    int32_t inputB[] =  {8, -3, -12, 39, 77, 103, -3, 15, -17, -16, -62, -41, 71, 77, 111, -72};
+
+    entry_point(output,inputA,inputB);
+
+}
