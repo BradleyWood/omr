@@ -1169,3 +1169,42 @@ TEST_F(VectorTest, VMReduction) {
 
     printf("%li ", output);
 }
+
+TEST_F(VectorTest, VCmp) {
+
+    auto inputTrees = "(method return= NoType args=[Address,Address,Address]   "
+                      "  (block                                                        "
+                      "     (mstoreiVector128Int32 offset=0                             "
+                      "         (aload parm=0)                                         "
+                      "            (vcmpgeVector128Int32                            "
+                      "                 (vloadiVector128Int32 (aload parm=1))           "
+                      "                 (vloadiVector128Int32 (aload parm=2))))         "
+                      "     (return)))                                                 ";
+
+    auto trees = parseString(inputTrees);
+
+    ASSERT_NOTNULL(trees);
+    //TODO: Re-enable this test on S390 after issue #1843 is resolved.
+    SKIP_ON_S390(KnownBug) << "This test is currently disabled on Z platforms because not all Z platforms have vector support (issue #1843)";
+    SKIP_ON_S390X(KnownBug) << "This test is currently disabled on Z platforms because not all Z platforms have vector support (issue #1843)";
+    SKIP_ON_RISCV(MissingImplementation);
+
+    Tril::DefaultCompiler compiler(trees);
+    ASSERT_EQ(0, compiler.compile()) << "Compilation failed unexpectedly\n" << "Input trees: " << inputTrees;
+
+
+    auto entry_point = compiler.getEntryPoint<void (*)(int32_t[], int32_t[], int32_t[])>();
+    // This test currently assumes 128bit SIMD
+
+    int32_t output[4] = {0};
+    int32_t inputA[4] = { 5, 8, 100, 16 };
+    int32_t inputB[4] = { 2, 11, 100, 15 };
+
+    entry_point(output, inputA, inputB);
+
+    for (int i = 0; i < 4; i++)
+    {
+        printf("%li ", output[i]);
+    }
+}
+

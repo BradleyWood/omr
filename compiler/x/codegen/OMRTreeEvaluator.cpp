@@ -4236,6 +4236,10 @@ TR::Register* OMR::X86::TreeEvaluator::vectorFPNaNHelper(TR::Node *node, TR::Reg
    OMR::X86::Encoding cmpEncoding = cmpOpcode.getSIMDEncoding(&cg->comp()->target().cpu, vl);
    OMR::X86::Encoding orEncoding = orOpcode.getSIMDEncoding(&cg->comp()->target().cpu, vl);
 
+   // Do not use AVX-512 cmp instruction because we want the result in a vector, not a mask
+   if (cmpEncoding >= EVEX_L128)
+       cmpEncoding = static_cast<Encoding>(cmpEncoding + EVEX_L128 - VEX_L128);
+
    TR_ASSERT_FATAL(movEncoding != OMR::X86::Encoding::Bad, "No suitable encoding method for move opcode");
    TR_ASSERT_FATAL(cmpEncoding != OMR::X86::Encoding::Bad, "No suitable encoding method for compare opcode");
    TR_ASSERT_FATAL(orEncoding != OMR::X86::Encoding::Bad, "No suitable encoding method for por opcode");
@@ -4253,6 +4257,319 @@ TR::Register* OMR::X86::TreeEvaluator::vectorFPNaNHelper(TR::Node *node, TR::Reg
       }
 
    return tmpReg;
+   }
+
+//
+// B S I L F D
+//
+// Integer Opcodes (AVX-2)
+//   PCMPEQ - PCMPGT (vector regsiter mask VEX, mask register EVEX)
+// Integer Opcodes (AVX-512)
+//   PCMP (Predicate EQ,LT,LE,F,NEQ,NLT,NLE,TRUE)
+// Float Opcodes
+//   PCMPPD / PCMPPS (predicates)
+//
+// Split compare evaluators into two categories (Floating-Point, Integers)
+//
+// For Integers
+//   Split handling by PRE-AVX512 vs AVX512
+// For PRE-AVX512
+//   EQ  -> EQ(a,b)
+//   NE  -> NOT (EQ(a,b))
+//   GT  -> GT(a,b)
+//   GTE -> NOT(GT(b,a))
+//   LT  -> GT(b,a)
+//   LTE -> NOT (GT(a,b))
+//
+TR::Register* OMR::X86::TreeEvaluator::vectorFPCompareHelper(TR::Node* node, TR::CodeGenerator* cg)
+   {
+   TR::DataType type = node->getDataType();
+   TR::VectorLength vl = type.getVectorLength();
+   TR::ILOpCodes opcode = node->getOpCodeValue();
+   TR_ASSERT_FATAL_WITH_NODE(node, OMR::ILOpCode::isVectorOpCode(opcode), "Expecting a vector opcode in vectorCompareEvaluator");
+
+   TR::Node *lhsNode = node->getFirstChild();
+   TR::Node *rhsNode = node->getSecondChild();
+   TR::Node* maskNode = node->getOpCode().isVectorMasked() ? node->getChild(2) : NULL;
+   TR::Register *lhsReg = cg->evaluate(lhsNode);
+   TR::Register *rhsReg = cg->evaluate(rhsNode);
+   TR::Register *maskReg = maskNode != NULL ? cg->evaluate(maskNode) : NULL;
+   TR::Register *result = cg->allocateRegister(cg->comp()->target().cpu.supportsFeature(OMR_FEATURE_X86_AVX512F) ? TR_VMR : TR_VRF);
+
+   int32_t predicate = 0;
+
+   switch (OMR::ILOpCode::getVectorOperation(opcode))
+      {
+      case TR::vcmpeq:
+         predicate = 0;
+         break;
+      case TR::vcmplt:
+         predicate = 1;
+         break;
+      case TR::vcmple:
+         predicate = 2;
+         break;
+      case TR::vcmpne:
+         predicate = 4;
+         break;
+      case TR::vcmpge:
+         predicate = 5;
+         break;
+      case TR::vcmpgt:
+         predicate = 6;
+         break;
+      default:
+         TR_ASSERT_FATAL(0, "Unsupported comparison predicate");
+         break;
+      }
+
+   TR::InstOpCode cmpOpcode = type.getVectorElementType().isFloat() ? TR::InstOpCode::CMPPSRegRegImm1 : TR::InstOpCode::CMPPDRegRegImm1;
+   OMR::X86::Encoding cmpEncoding = cmpOpcode.getSIMDEncoding(&cg->comp()->target().cpu, vl);
+
+   if (result->getKind() == TR_VMR)
+      {
+      TR::RegisterDependencyConditions* deps = generateRegisterDependencyConditions((uint8_t)0, (uint8_t)2, cg);
+      deps->addPostCondition(result, TR::RealRegister::NoReg, cg);
+
+      if (!maskReg)
+         {
+         maskReg = cg->allocateRegister(TR_VMR);
+         deps->addPostCondition(maskReg, TR::RealRegister::k0, cg);
+         }
+
+      generateRegMaskRegRegImmInstruction(cmpOpcode.getMnemonic(), node, result, maskReg, lhsReg, rhsReg, predicate, cg, cmpEncoding);
+      TR::LabelSymbol *label = generateLabelSymbol(cg);
+      generateLabelInstruction(TR::InstOpCode::label, node, label, deps, cg);
+      }
+   else
+      {
+      // todo: add RegRegRegImm instruction form
+      generateRegRegInstruction(TR::InstOpCode::MOVDQURegReg, node, result, lhsReg, cg, cmpEncoding);
+      generateRegRegImmInstruction(cmpOpcode.getMnemonic(), node, result, rhsReg, predicate, cg, cmpEncoding);
+
+      if (maskReg)
+         {
+         TR::InstOpCode andOpcode = TR::InstOpCode::PANDRegReg;
+         OMR::X86::Encoding andEncoding = cmpOpcode.getSIMDEncoding(&cg->comp()->target().cpu, vl);
+         generateRegRegInstruction(andOpcode.getMnemonic(), node, result, maskReg, cg, andEncoding);
+         }
+      }
+
+
+   if (!maskNode && maskReg)
+      {
+      cg->stopUsingRegister(maskReg);
+      }
+
+   node->setRegister(result);
+   cg->decReferenceCount(lhsNode);
+   cg->decReferenceCount(rhsNode);
+
+   if (maskNode)
+      {
+      cg->decReferenceCount(maskNode);
+      }
+
+   return result;
+   }
+
+TR::Register* OMR::X86::TreeEvaluator::vectorCompareEvaluator(TR::Node* node, TR::CodeGenerator* cg)
+   {
+   TR::DataType type = node->getDataType();
+   TR::VectorLength vl = type.getVectorLength();
+   TR::ILOpCodes opcode = node->getOpCodeValue();
+   TR_ASSERT_FATAL_WITH_NODE(node, OMR::ILOpCode::isVectorOpCode(opcode), "Expecting a vector opcode in vectorCompareEvaluator");
+
+   if (type.getVectorElementType().isFloatingPoint())
+      return vectorFPCompareHelper(node, cg);
+
+   TR::Node *lhsNode = node->getFirstChild();
+   TR::Node *rhsNode = node->getSecondChild();
+   TR::Node* maskNode = node->getOpCode().isVectorMasked() ? node->getChild(2) : NULL;
+   TR::Register *lhsReg = cg->evaluate(lhsNode);
+   TR::Register *rhsReg = cg->evaluate(rhsNode);
+   TR::Register *maskReg = maskNode != NULL ? cg->evaluate(maskNode) : NULL;
+
+   TR::Register *result = NULL;
+
+   if (cg->comp()->target().cpu.supportsFeature(OMR_FEATURE_X86_AVX512F))
+      {
+      result = cg->allocateRegister(TR_VMR);
+      int32_t predicate = 0;
+
+      switch (OMR::ILOpCode::getVectorOperation(opcode))
+         {
+         case TR::vcmpeq:
+            predicate = 0;
+            break;
+         case TR::vcmplt:
+            predicate = 1;
+            break;
+         case TR::vcmple:
+            predicate = 2;
+            break;
+         case TR::vcmpne:
+            predicate = 4;
+            break;
+         case TR::vcmpge:
+            predicate = 5;
+            break;
+         case TR::vcmpgt:
+            predicate = 6;
+            break;
+         default:
+            TR_ASSERT_FATAL(0, "Unsupported comparison predicate");
+            break;
+         }
+
+      TR::InstOpCode cmpOpcode = TR::InstOpCode::bad;
+
+      switch (type.getVectorElementType())
+         {
+         case TR::Int8:
+            cmpOpcode = TR::InstOpCode::VPCMPBMaskMaskRegRegImm;
+            break;
+         case TR::Int16:
+            cmpOpcode = TR::InstOpCode::VPCMPWMaskMaskRegRegImm;
+            break;
+         case TR::Int32:
+            cmpOpcode = TR::InstOpCode::VPCMPDMaskMaskRegRegImm;
+            break;
+         case TR::Int64:
+            cmpOpcode = TR::InstOpCode::VPCMPQMaskMaskRegRegImm;
+            break;
+         default:
+            TR_ASSERT_FATAL(0, "Expected integral type");
+            break;
+         }
+
+      TR::RegisterDependencyConditions* deps = generateRegisterDependencyConditions((uint8_t)0, (uint8_t)2, cg);
+      deps->addPostCondition(result, TR::RealRegister::NoReg, cg);
+
+      if (!maskReg)
+         {
+         maskReg = cg->allocateRegister(TR_VMR);
+         deps->addPostCondition(maskReg, TR::RealRegister::k0, cg);
+         }
+
+      OMR::X86::Encoding cmpEncoding = cmpOpcode.getSIMDEncoding(&cg->comp()->target().cpu, vl);
+      generateRegMaskRegRegImmInstruction(cmpOpcode.getMnemonic(), node, result, maskReg, lhsReg, rhsReg, predicate, cg, cmpEncoding);
+
+      TR::LabelSymbol *label = generateLabelSymbol(cg);
+      generateLabelInstruction(TR::InstOpCode::label, node, label, deps, cg);
+
+      if (!maskNode && maskReg)
+         {
+         cg->stopUsingRegister(maskReg);
+         }
+      }
+   else
+      {
+// For PRE-AVX512
+//   EQ  -> EQ(a,b)
+//   NE  -> NOT (EQ(a,b))
+//   GT  -> GT(a,b)
+//   GTE -> NOT(GT(b,a))
+//   LT  -> GT(b,a)
+//   LTE -> NOT (GT(a,b))
+      result = cg->allocateRegister(TR_VRF);
+      TR::InstOpCode cmpOpcode = TR::InstOpCode::bad;
+      bool swapOperands = false;
+      bool invAfter = false;
+      bool cmpEq = false;
+
+      switch (OMR::ILOpCode::getVectorOperation(opcode))
+         {
+         case TR::vcmpne:
+            invAfter = true;
+         case TR::vcmpeq:
+            cmpEq = true;
+            break;
+         case TR::vcmpge:
+            swapOperands = true;
+            invAfter = true;
+         case TR::vcmpgt:
+            break;
+         case TR::vcmplt:
+            swapOperands = true;
+            break;
+         case TR::vcmple:
+            invAfter = true;
+            break;
+         default:
+            TR_ASSERT_FATAL(0, "Unsupported comparison predicate");
+            break;
+         }
+
+      if (swapOperands)
+         {
+         TR::Register *tmp = lhsReg;
+         lhsReg = rhsReg;
+         rhsReg = tmp;
+         }
+
+      switch (type.getVectorElementType())
+         {
+         case TR::Int8:
+            cmpOpcode = cmpEq ? TR::InstOpCode::PCMPEQBRegReg : TR::InstOpCode::PCMPGTBRegReg;
+            break;
+         case TR::Int16:
+            cmpOpcode = cmpEq ? TR::InstOpCode::PCMPEQWRegReg : TR::InstOpCode::PCMPGTWRegReg;
+            break;
+         case TR::Int32:
+            cmpOpcode = cmpEq ? TR::InstOpCode::PCMPEQDRegReg : TR::InstOpCode::PCMPGTDRegReg;
+            break;
+         case TR::Int64:
+            cmpOpcode = cmpEq ? TR::InstOpCode::PCMPEQQRegReg : TR::InstOpCode::PCMPGTQRegReg;
+            break;
+         default:
+            TR_ASSERT_FATAL(0, "Expected integral type");
+            break;
+         }
+
+      OMR::X86::Encoding cmpEncoding = cmpOpcode.getSIMDEncoding(&cg->comp()->target().cpu, vl);
+
+      if (cmpEncoding == OMR::X86::Legacy)
+         {
+         generateRegRegInstruction(TR::InstOpCode::MOVDQURegReg, node, result, lhsReg, cg);
+         generateRegRegInstruction(cmpOpcode.getMnemonic(), node, result, rhsReg, cg, cmpEncoding);
+         }
+      else
+         {
+         generateRegRegRegInstruction(cmpOpcode.getMnemonic(), node, result, lhsReg, rhsReg, cg, cmpEncoding);
+         }
+
+      if (invAfter)
+         {
+         TR::Register *mask = cg->allocateRegister(TR_VRF);
+
+         cmpOpcode = TR::InstOpCode::PCMPEQDRegReg;
+         cmpEncoding = cmpOpcode.getSIMDEncoding(&cg->comp()->target().cpu, vl);
+         generateRegRegInstruction(cmpOpcode.getMnemonic(), node, mask, mask, cg, cmpEncoding);
+
+         TR::InstOpCode xorOpcode = TR::InstOpCode::PXORRegReg;
+         OMR::X86::Encoding xorEncoding = cmpOpcode.getSIMDEncoding(&cg->comp()->target().cpu, vl);
+         generateRegRegInstruction(xorOpcode.getMnemonic(), node, result, mask, cg, xorEncoding);
+         cg->stopUsingRegister(mask);
+         }
+
+      if (maskReg)
+         {
+         TR::InstOpCode andOpcode = TR::InstOpCode::PANDRegReg;
+         OMR::X86::Encoding andEncoding = cmpOpcode.getSIMDEncoding(&cg->comp()->target().cpu, vl);
+         generateRegRegInstruction(andOpcode.getMnemonic(), node, result, maskReg, cg, andEncoding);
+         }
+      }
+
+   node->setRegister(result);
+   cg->decReferenceCount(lhsNode);
+   cg->decReferenceCount(rhsNode);
+   if (maskNode)
+      {
+      cg->decReferenceCount(maskNode);
+      }
+
+   return result;
    }
 
 // For ILOpCode that can be translated to single SSE/AVX instructions
@@ -5520,37 +5837,37 @@ OMR::X86::TreeEvaluator::vmandEvaluator(TR::Node *node, TR::CodeGenerator *cg)
 TR::Register*
 OMR::X86::TreeEvaluator::vmcmpeqEvaluator(TR::Node *node, TR::CodeGenerator *cg)
    {
-   return TR::TreeEvaluator::unImpOpEvaluator(node, cg);
+   return TR::TreeEvaluator::vectorCompareEvaluator(node, cg);
    }
 
 TR::Register*
 OMR::X86::TreeEvaluator::vmcmpneEvaluator(TR::Node *node, TR::CodeGenerator *cg)
    {
-   return TR::TreeEvaluator::unImpOpEvaluator(node, cg);
+   return TR::TreeEvaluator::vectorCompareEvaluator(node, cg);
    }
 
 TR::Register*
 OMR::X86::TreeEvaluator::vmcmpgtEvaluator(TR::Node *node, TR::CodeGenerator *cg)
    {
-   return TR::TreeEvaluator::unImpOpEvaluator(node, cg);
+   return TR::TreeEvaluator::vectorCompareEvaluator(node, cg);
    }
 
 TR::Register*
 OMR::X86::TreeEvaluator::vmcmpgeEvaluator(TR::Node *node, TR::CodeGenerator *cg)
    {
-   return TR::TreeEvaluator::unImpOpEvaluator(node, cg);
+   return TR::TreeEvaluator::vectorCompareEvaluator(node, cg);
    }
 
 TR::Register*
 OMR::X86::TreeEvaluator::vmcmpltEvaluator(TR::Node *node, TR::CodeGenerator *cg)
    {
-   return TR::TreeEvaluator::unImpOpEvaluator(node, cg);
+   return TR::TreeEvaluator::vectorCompareEvaluator(node, cg);
    }
 
 TR::Register*
 OMR::X86::TreeEvaluator::vmcmpleEvaluator(TR::Node *node, TR::CodeGenerator *cg)
    {
-   return TR::TreeEvaluator::unImpOpEvaluator(node, cg);
+   return TR::TreeEvaluator::vectorCompareEvaluator(node, cg);
    }
 
 TR::Register*

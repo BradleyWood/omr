@@ -1026,6 +1026,29 @@ bool OMR::X86::CodeGenerator::getSupportsOpCodeForAutoSIMD(TR::CPU *cpu, TR::ILO
    // implemented vector opcodes
    switch (opcode.getVectorOperation())
       {
+      case TR::vcmpeq:
+      case TR::vcmpne:
+      case TR::vcmpgt:
+      case TR::vcmpge:
+      case TR::vcmplt:
+      case TR::vcmple:
+      case TR::vmcmpeq:
+      case TR::vmcmpne:
+      case TR::vmcmpgt:
+      case TR::vmcmpge:
+      case TR::vmcmplt:
+      case TR::vmcmple:
+         switch (ot.getVectorLength())
+            {
+            case TR::VectorLength128:
+               return cpu->supportsFeature(OMR_FEATURE_X86_SSE4_1);;
+            case TR::VectorLength256:
+               return cpu->supportsFeature(OMR_FEATURE_X86_AVX2);
+            case TR::VectorLength512:
+               return cpu->supportsFeature(OMR_FEATURE_X86_AVX512F);
+            default:
+               return false;
+            }
       case TR::mload:
       case TR::mloadi:
          return cpu->supportsFeature(OMR_FEATURE_X86_SSE4_1);
