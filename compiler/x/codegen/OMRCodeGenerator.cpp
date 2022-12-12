@@ -1043,6 +1043,13 @@ bool OMR::X86::CodeGenerator::getSupportsOpCodeForAutoSIMD(TR::CPU *cpu, TR::ILO
             {
             break;
             }
+      case TR::vcmpgt:
+      case TR::vcmpeq:
+      case TR::vcmpne:
+      case TR::vcmpge:
+      case TR::vcmple:
+      case TR::vcmplt:
+         return !et.isFloatingPoint() && cpu->supportsFeature(OMR_FEATURE_X86_AVX512F);
       case TR::b2m:
       case TR::s2m:
       case TR::i2m:

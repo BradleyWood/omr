@@ -4255,6 +4255,193 @@ TR::Register* OMR::X86::TreeEvaluator::vectorFPNaNHelper(TR::Node *node, TR::Reg
    return tmpReg;
    }
 
+//
+// B S I L F D
+//
+// Integer Opcodes (AVX-2)
+//   PCMPEQ - PCMPGT (vector regsiter mask VEX, mask register EVEX)
+// Integer Opcodes (AVX-512)
+//   PCMP (Predicate EQ,LT,LE,F,NEQ,NLT,NLE,TRUE)
+// Float Opcodes
+//   PCMPPD / PCMPPS (predicates)
+//
+// Split compare evaluators into two categories (Floating-Point, Integers)
+//
+// For Integers
+//   Split handling by PRE-AVX512 vs AVX512
+// For PRE-AVX512
+//   EQ  -> EQ(a,b)
+//   NE  -> NOT (EQ(a,b))
+//   GT  -> GT(a,b)
+//   GTE -> NOT(GT(b,a))
+//   LT  -> GT(b,a)
+//   LTE -> NOT (GT(a,b))
+//
+TR::Register* OMR::X86::TreeEvaluator::vectorFPCompareHelper(TR::Node* node, TR::CodeGenerator* cg)
+   {
+   return unImpOpEvaluator(node, cg);
+   }
+
+TR::Register* OMR::X86::TreeEvaluator::vectorCompareEvaluator(TR::Node* node, TR::CodeGenerator* cg)
+   {
+   TR::DataType type = node->getDataType();
+   TR::VectorLength vl = type.getVectorLength();
+   TR::ILOpCodes opcode = node->getOpCodeValue();
+   TR_ASSERT_FATAL_WITH_NODE(node, OMR::ILOpCode::isVectorOpCode(opcode), "Expecting a vector opcode in vectorCompareEvaluator");
+
+   if (type.getVectorElementType().isFloatingPoint())
+      return vectorFPCompareHelper(node, cg);
+
+   TR::Node *lhsNode = node->getFirstChild();
+   TR::Node *rhsNode = node->getSecondChild();
+   TR::Register *lhsReg = cg->evaluate(lhsNode);
+   TR::Register *rhsReg = cg->evaluate(rhsNode);
+
+   if (cg->comp()->target().cpu.supportsFeature(OMR_FEATURE_X86_AVX512F))
+      {
+      TR::Register *result = cg->allocateRegister(TR_VMR);
+      int32_t predicate = 0;
+
+      switch (OMR::ILOpCode::getVectorOperation(opcode))
+         {
+         case TR::vcmpeq:
+            predicate = 0;
+            break;
+         case TR::vcmplt:
+            predicate = 1;
+            break;
+         case TR::vcmple:
+            predicate = 2;
+            break;
+         case TR::vcmpne:
+            predicate = 4;
+            break;
+         case TR::vcmpge:
+            predicate = 5;
+            break;
+         case TR::vcmpgt:
+            predicate = 6;
+            break;
+         default:
+            TR_ASSERT_FATAL(0, "Unsupported comparison predicate");
+            break;
+         }
+
+      TR::InstOpCode cmpOpcode = TR::InstOpCode::bad;
+
+      switch (type.getVectorElementType())
+         {
+         case TR::Int8:
+            cmpOpcode = TR::InstOpCode::VPCMPBMaskMaskRegRegImm;
+            break;
+         case TR::Int16:
+            cmpOpcode = TR::InstOpCode::VPCMPWMaskMaskRegRegImm;
+            break;
+         case TR::Int32:
+            cmpOpcode = TR::InstOpCode::VPCMPDMaskMaskRegRegImm;
+            break;
+         case TR::Int64:
+             cmpOpcode = TR::InstOpCode::VPCMPQMaskMaskRegRegImm;
+             break;
+         default:
+            TR_ASSERT_FATAL(0, "Expected integral type");
+            break;
+         }
+
+      TR::RegisterDependencyConditions* deps = generateRegisterDependencyConditions((uint8_t)0, (uint8_t)2, cg);
+      deps->addPostCondition(result, TR::RealRegister::NoReg, cg);
+
+      TR::Register *dummy = cg->allocateRegister(TR_VMR);
+      deps->addPostCondition(dummy, TR::RealRegister::k0, cg);
+
+      OMR::X86::Encoding cmpEncoding = cmpOpcode.getSIMDEncoding(&cg->comp()->target().cpu, vl);
+      generateRegMaskRegRegImmInstruction(cmpOpcode.getMnemonic(), node, result, dummy, lhsReg, rhsReg, predicate, cg, cmpEncoding);
+
+      TR::LabelSymbol *label = generateLabelSymbol(cg);
+      generateLabelInstruction(TR::InstOpCode::label, node, label, deps, cg);
+      cg->stopUsingRegister(dummy);
+
+      node->setRegister(result);
+      cg->decReferenceCount(lhsNode);
+      cg->decReferenceCount(rhsNode);
+
+      return result;
+      }
+   else
+      {
+// For PRE-AVX512
+//   EQ  -> EQ(a,b)
+//   NE  -> NOT (EQ(a,b))
+//   GT  -> GT(a,b)
+//   GTE -> NOT(GT(b,a))
+//   LT  -> GT(b,a)
+//   LTE -> NOT (GT(a,b))
+      TR::Register *result = cg->allocateRegister(TR_VRF);
+      TR::InstOpCode cmpOpcode = TR::InstOpCode::bad;
+      bool swapOperands = false;
+      bool invAfter = false;
+      bool cmpEq = false;
+
+      switch (OMR::ILOpCode::getVectorOperation(opcode))
+         {
+         case TR::vcmpne:
+            invAfter = true;
+         case TR::vcmpeq:
+            cmpEq = true;
+            break;
+         case TR::vcmpge:
+            swapOperands = true;
+            invAfter = true;
+         case TR::vcmpgt:
+            break;
+         case TR::vcmplt:
+            swapOperands = true;
+            break;
+         case TR::vcmple:
+            invAfter = true;
+            break;
+         default:
+            TR_ASSERT_FATAL(0, "Unsupported comparison predicate");
+            break;
+         }
+
+      if (swapOperands)
+         {
+         // swap lhs and rhs
+         }
+
+      switch (type.getVectorElementType())
+         {
+         case TR::Int8:
+            cmpOpcode = cmpEq ? TR::InstOpCode::PCMPEQBRegReg : TR::InstOpCode::PCMPGTBRegReg;
+            break;
+         case TR::Int16:
+            cmpOpcode = cmpEq ? TR::InstOpCode::PCMPEQWRegReg : TR::InstOpCode::PCMPGTWRegReg;
+            break;
+         case TR::Int32:
+            // todo
+            break;
+         case TR::Int64:
+            // todo
+            break;
+         default:
+            TR_ASSERT_FATAL(0, "Expected integral type");
+            break;
+         }
+
+      if (invAfter)
+         {
+         TR::Register *mask = cg->allocateRegister(TR_VRF);
+         // pcmpeqd mask, mask
+         // pxor result, mask
+         }
+
+      // if (mask)
+      //   mergeMaskHelper(...)
+      return result;
+      }
+   }
+
 // For ILOpCode that can be translated to single SSE/AVX instructions
 TR::Register* OMR::X86::TreeEvaluator::vectorBinaryArithmeticEvaluator(TR::Node* node, TR::CodeGenerator* cg)
    {

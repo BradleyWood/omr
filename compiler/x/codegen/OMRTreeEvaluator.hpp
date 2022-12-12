@@ -361,6 +361,8 @@ class OMR_EXTENSIBLE TreeEvaluator: public OMR::TreeEvaluator
    static TR::Register *vectorFPNaNHelper(TR::Node *node, TR::Register *lhs, TR::Register *tmpReg, TR::Register *rhs, TR::MemoryReference *mr, TR::CodeGenerator *cg);
    static TR::Register *vectorBinaryArithmeticEvaluator(TR::Node *node, TR::CodeGenerator *cg);
    static TR::Register *floatingPointBinaryArithmeticEvaluator(TR::Node *node, TR::CodeGenerator *cg);
+   static TR::Register *vectorFPCompareHelper(TR::Node *node, TR::CodeGenerator *cg);
+   static TR::Register *vectorCompareEvaluator(TR::Node *node, TR::CodeGenerator *cg);
 
    static TR::Register *unaryVectorMaskHelper(TR::InstOpCode opcode,
                                               OMR::X86::Encoding encoding,
