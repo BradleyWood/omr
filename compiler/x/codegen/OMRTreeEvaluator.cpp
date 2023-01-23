@@ -4620,7 +4620,29 @@ OMR::X86::TreeEvaluator::mLastTrueEvaluator(TR::Node *node, TR::CodeGenerator *c
 TR::Register*
 OMR::X86::TreeEvaluator::mToLongBitsEvaluator(TR::Node *node, TR::CodeGenerator *cg)
    {
-   return TR::TreeEvaluator::unImpOpEvaluator(node, cg);
+   TR::DataType type = node->getDataType();
+   TR::Node *maskNode = node->getFirstChild();
+   TR::Register *maskReg = cg->evaluate(maskNode);
+
+   TR_ASSERT_FATAL_WITH_NODE(node, cg->comp()->target().is64Bit(), "mToLongBitsEvaluator() only supported on 64-bit");
+
+   TR::Register *resultReg = cg->allocateRegister(TR_GPR);
+
+   if (maskReg->getKind() == TR_VMR)
+      {
+      TR::InstOpCode movOpcode = cg->comp()->target().cpu.supportsFeature(OMR_FEATURE_X86_AVX512BW) ? TR::InstOpCode::KMOVQRegMask : TR::InstOpCode::KMOVWRegMask;
+      generateRegRegInstruction(movOpcode.getMnemonic(), node, resultReg, maskReg, cg);
+      }
+   else
+      {
+      TR_ASSERT_FATAL_WITH_NODE(maskNode, maskReg->getKind() == TR_VRF, "Expected mask register kind of TR_VMR or TR_VRF");
+      return unImpOpEvaluator(node, cg);
+      }
+
+   node->setRegister(resultReg);
+   cg->decReferenceCount(maskNode);
+
+   return resultReg;
    }
 
 TR::Register*

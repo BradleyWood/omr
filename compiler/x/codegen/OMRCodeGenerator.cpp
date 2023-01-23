@@ -1043,6 +1043,8 @@ bool OMR::X86::CodeGenerator::getSupportsOpCodeForAutoSIMD(TR::CPU *cpu, TR::ILO
             {
             break;
             }
+      case TR::mToLongBits:
+         return cpu->supportsFeature(OMR_FEATURE_X86_AVX512F);
       case TR::b2m:
       case TR::s2m:
       case TR::i2m:
