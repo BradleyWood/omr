@@ -328,7 +328,7 @@ public:
    void uncommonCallConstNodes();
 
    void preLowerTrees();
-   void postLowerTrees() {}
+   void postLowerTrees();
 
    TR::TreeTop *lowerTree(TR::Node *root, TR::TreeTop *tt);
    void lowerTrees();

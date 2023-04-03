@@ -281,6 +281,8 @@ class OMR_EXTENSIBLE Block : public TR::CFGNode
 
    TR_BitVector *getLiveLocals()                { return _liveLocals; }
    TR_BitVector *setLiveLocals(TR_BitVector* v) { return (_liveLocals = v); }
+   TR_BitVector *getLiveOnExitLocals()                { return _liveExitLocals; }
+   TR_BitVector *setLiveOnExitLocals(TR_BitVector* v) { return (_liveExitLocals = v); }
 
    TR_BlockStructure *getStructureOf()                     { return _pStructureOf; }
    TR_BlockStructure *setStructureOf(TR_BlockStructure *p) { return (_pStructureOf = p); }
@@ -540,6 +542,7 @@ class OMR_EXTENSIBLE Block : public TR::CFGNode
    TR::TreeTop *                         _pExit;
 
    TR_BitVector *                        _liveLocals;
+   TR_BitVector *                        _liveExitLocals;
    TR_BlockStructure *                   _pStructureOf;
 
    // TODO: This member is only used during GRA and should be moved out.

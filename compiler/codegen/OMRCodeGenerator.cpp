@@ -460,8 +460,50 @@ OMR::CodeGenerator::preLowerTrees()
    int32_t symRefCount = self()->comp()->getSymRefCount();
    _localsThatAreStored = new (self()->comp()->trHeapMemory()) TR_BitVector(symRefCount, self()->comp()->trMemory(), heapAlloc);
    _numLocalsWhenStoreAnalysisWasDone = symRefCount;
+
+   if (comp()->getOption(TR_EnableAggressiveLiveness))
+      {
+      for (auto block = self()->comp()->getStartBlock(); block != NULL; block = block->getNextBlock())
+         {
+         TR_BitVector *liveOnEntry = block->getLiveLocals();
+
+         if (liveOnEntry)
+            {
+            TR_BitVector *liveOnExit = new (self()->trHeapMemory()) TR_BitVector(*liveOnEntry);
+
+            block->setLiveOnExitLocals(liveOnExit);
+            }
+         }
+      }
    }
 
+void
+OMR::CodeGenerator::postLowerTrees()
+   {
+   if (comp()->getOption(TR_EnableAggressiveLiveness))
+      {
+      for (auto block = self()->comp()->getStartBlock(); block != NULL; block = block->getNextBlock())
+         {
+         TR_BitVector *liveOnEntry = block->getLiveLocals();
+         TR_BitVector *liveOnExit = block->getLiveOnExitLocals();
+
+         if (liveOnEntry && liveOnExit)
+            {
+            for (const auto &edge: block->getSuccessors())
+               {
+               TR::Block *successor = toBlock(edge->getTo());
+
+               if (successor->getLiveLocals())
+                  {
+                  *liveOnExit |= *successor->getLiveLocals();
+                  }
+               }
+
+            block->setLiveOnExitLocals(liveOnExit);
+            }
+         }
+      }
+   }
 
 void
 OMR::CodeGenerator::lowerTreesPreTreeTopVisit(TR::TreeTop *tt, vcount_t visitCount)
