@@ -48,6 +48,7 @@ namespace OMR { typedef OMR::Block BlockConnector; }
 #include "infra/Flags.hpp"
 #include "infra/Link.hpp"
 #include "infra/List.hpp"
+#include "infra/HashTab.hpp"
 #include "optimizer/Optimizer.hpp"
 
 class TR_BitVector;
@@ -281,6 +282,8 @@ class OMR_EXTENSIBLE Block : public TR::CFGNode
 
    TR_BitVector *getLiveLocals()                { return _liveLocals; }
    TR_BitVector *setLiveLocals(TR_BitVector* v) { return (_liveLocals = v); }
+   TR_HashTabInt *getLocalRefUseMap()              { return _localUseMap; }
+   TR_HashTabInt *setLocalRefUseMap(TR_HashTabInt* v) { return (_localUseMap = v); }
    TR_BitVector *getLiveOnExitLocals()                { return _liveExitLocals; }
    TR_BitVector *setLiveOnExitLocals(TR_BitVector* v) { return (_liveExitLocals = v); }
 
@@ -543,6 +546,7 @@ class OMR_EXTENSIBLE Block : public TR::CFGNode
 
    TR_BitVector *                        _liveLocals;
    TR_BitVector *                        _liveExitLocals;
+   TR_HashTabInt *                       _localUseMap;
    TR_BlockStructure *                   _pStructureOf;
 
    // TODO: This member is only used during GRA and should be moved out.

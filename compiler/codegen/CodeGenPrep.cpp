@@ -319,9 +319,38 @@ OMR::CodeGenerator::lowerTreeIfNeeded(
       TR::Node *parent,
       TR::TreeTop *tt)
    {
+
+    if (node->getOpCodeValue() == TR::BBStart)
+       {
+       self()->setCurrentEvaluationBlock(node->getBlock());
+       }
+
    if (node->getOpCodeValue() == TR::loadaddr && node->getOpCode().hasSymbolReference() && node->getSymbol()->isLabel())
       {
       node->getSymbol()->setHasAddrTaken();
+      }
+
+   if (self()->comp()->getOption(TR_EnableAggressiveLiveness) &&
+         (node->getOpCodeValue() == TR::loadaddr || node->getOpCodeValue() == TR::aload || node->getOpCodeValue() == TR::aloadi) &&
+         node->getOpCode().hasSymbolReference() && node->getSymbol()->isCollectedReference())
+      {
+      TR::Block *block = self()->getCurrentEvaluationBlock();
+
+      if (!block->getLocalRefUseMap())
+         {
+         TR_HashTabInt *tab = new (self()->trHeapMemory()) TR_HashTabInt(self()->trMemory());
+         block->setLocalRefUseMap(tab);
+         }
+
+      TR_HashTabInt *map = block->getLocalRefUseMap();
+
+      TR_HashId hashId = 0;
+      printf("Inserting into map=%p, block=%d local=%d\n", map, block->getNumber(), node->getSymbol()->getLocalIndex());
+      if (!map->add(node->getSymbol()->getLocalIndex(), hashId, tt))
+         {
+         map->locate(node->getSymbol()->getLocalIndex(), hashId);
+         map->replace(node->getSymbol()->getLocalIndex(), hashId, tt);
+         }
       }
 
    if (node->getOpCodeValue() == TR::ldiv && self()->codegenSupportsUnsignedIntegerDivide())

@@ -131,6 +131,7 @@ OMR::Block::init(TR::TreeTop *entry, TR::TreeTop *exit)
    _pExit = exit;
    _pStructureOf = NULL;
    _liveLocals = NULL;
+   _localUseMap = NULL;
    _globalRegisters = 0;
    _catchBlockExtension = NULL;
    _firstInstruction = NULL;
@@ -154,6 +155,7 @@ OMR::Block::Block(TR::Block &other, TR::TreeTop *entry, TR::TreeTop *exit) :
    _pExit(exit),
    _pStructureOf(NULL),
    _liveLocals(NULL),
+   _localUseMap(NULL),
    _globalRegisters(0),
    _firstInstruction(other._firstInstruction),
    _lastInstruction(other._lastInstruction),

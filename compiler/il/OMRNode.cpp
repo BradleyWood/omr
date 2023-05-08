@@ -5160,7 +5160,7 @@ OMR::Node::getSymbol()
 TR::Block *
 OMR::Node::getBlock(bool ignored)
    {
-   TR_ASSERT(self()->hasBlock(), "attempting to access _block field for node %s %p that does not have it", self()->getOpCode().getName(), this);
+   TR_ASSERT_FATAL(self()->hasBlock(), "attempting to access _block field for node %s %p that does not have it", self()->getOpCode().getName(), this);
    return _unionPropertyA._block;
    }
 

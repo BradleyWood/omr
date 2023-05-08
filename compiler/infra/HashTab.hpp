@@ -139,7 +139,7 @@ class TR_HashTab
    void replace(void *key, TR_HashId hashIndex, void *data)
       {
       TR_HashTableEntry *entry = new (trMemory(), _allocType) TR_HashTableEntry(key,data,0);
-      TR_ASSERT(_table && _table[hashIndex], "entry in hashIndex is NULL\n");
+      TR_ASSERT_FATAL(_table && _table[hashIndex], "entry in hashIndex is NULL\n");
       entry->_chain = _table[hashIndex]->_chain;
       _table[hashIndex] = entry;
       }
@@ -203,6 +203,7 @@ class TR_HashTabInt : public TR_HashTab
 
    bool locate(int32_t key,TR_HashId &hashIndex){ return TR_HashTab::locate((const void*)(uintptr_t)key,hashIndex);}
    bool add(int32_t key,TR_HashId hashIndex,void * data){ return TR_HashTab::add((void *)(uintptr_t)key,hashIndex,data);}
+   void replace(int32_t key,TR_HashId hashIndex,void * data){ TR_HashTab::replace((void *)(uintptr_t)key,hashIndex,data);}
    };
 
 class TR_HashTabString : public TR_HashTab
