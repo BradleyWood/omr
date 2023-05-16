@@ -501,6 +501,16 @@ OMR::CodeGenerator::postLowerTrees()
 
             block->setLiveOnExitLocals(liveOnExit);
             }
+         TR_BitVector *test = block->getLiveOnExitLocals();
+         if (test)
+         {
+         TR_BitVectorIterator bvi(*test);
+         while (bvi.hasMoreElements())
+            {
+            printf("%d, ", bvi.getNextElement());
+            }
+            printf("\n");
+         }
          }
       }
    }
