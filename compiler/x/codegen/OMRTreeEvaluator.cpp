@@ -4795,18 +4795,82 @@ OMR::X86::TreeEvaluator::bitpermuteEvaluator(TR::Node *node, TR::CodeGenerator *
    return resultReg;
    }
 
+TR::Register*
+OMR::X86::TreeEvaluator::maskTestHelper(TR::Node *node, TR::CodeGenerator *cg)
+   {
+   TR::Node *maskNode = node->getChild(0);
+   TR::Register *maskReg = cg->evaluate(maskNode);
+   TR::DataType vt = node->getOpCode().getVectorResultDataType();
+   TR::VectorLength vl = vt.getVectorLength();
+   TR::Register *resultReg = cg->allocateRegister(TR_GPR);
+   TR::Register *tmpReg = cg->allocateRegister(TR_GPR);
+   TR::Register *tmp2Reg = cg->allocateRegister(TR_GPR);
+
+   bool allTrue = node->getOpCode().getVectorOperation() == TR::mAllTrue;
+   bool b64 = cg->comp()->target().is64Bit();
+   TR_ASSERT_FATAL(b64, "Mask tests are only supported on 64-bit");
+
+   if (maskReg->getKind() == TR_VMR)
+      {
+      TR::InstOpCode movOpcode = cg->comp()->target().cpu.supportsFeature(OMR_FEATURE_X86_AVX512F) ? OMR::InstOpCode::KMOVQRegMask : OMR::InstOpCode::KMOVWRegMask;
+      generateRegRegInstruction(movOpcode.getMnemonic(), node, tmp2Reg, maskReg, cg);
+      }
+   else
+      {
+      TR_ASSERT_FATAL(FALSE, "Only native AVX-512 masks supported");
+      }
+
+   generateRegRegInstruction(TR::InstOpCode::XORRegReg(b64), node, resultReg, resultReg, cg);
+
+   if (allTrue)
+      {
+      uint64_t numBits = vt.getVectorNumLanes();
+
+      if (numBits == 64)
+         {
+         generateRegImm64Instruction(TR::InstOpCode::MOV8RegImm64, node, tmpReg, -1, cg);
+         generateRegRegInstruction(TR::InstOpCode::CMP4RegReg, node, tmp2Reg, tmpReg, cg);
+         }
+      else
+         {
+         TR_ASSERT_FATAL(numBits <= 32 && numBits % 2 == 0, "Unexpected number of lanes for mAllTrue");
+         int32_t mask = 1;
+
+         while (--numBits > 0)
+            mask |= mask << 1;
+
+         generateRegImmInstruction(TR::InstOpCode::CMP4RegImm4, node, tmp2Reg, mask, cg);
+         }
+
+      generateRegImmInstruction(TR::InstOpCode::MOVRegImm4(b64), node, tmpReg, 1, cg);
+      generateRegRegInstruction(TR::InstOpCode::CMOVE4RegReg, node, resultReg, tmpReg, cg);
+      }
+   else
+      {
+      generateRegImmInstruction(TR::InstOpCode::MOVRegImm4(b64), node, tmpReg, 1, cg);
+      generateRegRegInstruction(TR::InstOpCode::TESTRegReg(b64), node, tmp2Reg, tmp2Reg, cg);
+      generateRegRegInstruction(TR::InstOpCode::CMOVNE4RegReg, node, resultReg, tmpReg, cg);
+      }
+
+   cg->stopUsingRegister(tmpReg);
+   cg->stopUsingRegister(tmp2Reg);
+   node->setRegister(resultReg);
+   cg->decReferenceCount(maskNode);
+
+   return resultReg;
+   }
 
 // mask evaluators
 TR::Register*
 OMR::X86::TreeEvaluator::mAnyTrueEvaluator(TR::Node *node, TR::CodeGenerator *cg)
    {
-   return TR::TreeEvaluator::unImpOpEvaluator(node, cg);
+   return TR::TreeEvaluator::maskTestHelper(node, cg);
    }
 
 TR::Register*
 OMR::X86::TreeEvaluator::mAllTrueEvaluator(TR::Node *node, TR::CodeGenerator *cg)
    {
-   return TR::TreeEvaluator::unImpOpEvaluator(node, cg);
+   return TR::TreeEvaluator::maskTestHelper(node, cg);
    }
 
 TR::Register*
