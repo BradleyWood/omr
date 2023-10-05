@@ -5717,7 +5717,7 @@ OMR::X86::TreeEvaluator::vmulEvaluator(TR::Node *node, TR::CodeGenerator *cg)
 
       TR::InstOpCode xorOpcode = TR::InstOpCode::PXORRegReg;
       OMR::X86::Encoding xorEncoding = xorOpcode.getSIMDEncoding(&cg->comp()->target().cpu, vl);
-      TR_ASSERT_FATAL(xorEncoding != OMR::X86::Encoding::Bad, "No suitable encoding form for pxor instruction");
+      TR_ASSERT_FATAL_WITH_NODE(node, xorEncoding != OMR::X86::Encoding::Bad, "No suitable encoding form for pxor instruction");
 
       generateRegRegInstruction(xorOpcode.getMnemonic(), node, zeroReg, zeroReg, cg, xorEncoding);
 
