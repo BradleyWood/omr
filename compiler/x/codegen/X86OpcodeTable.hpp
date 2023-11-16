@@ -42,6 +42,9 @@ enum ArithmeticOps : uint32_t
    BinaryArithmeticShiftRight,
    BinaryRotateLeft,
    BinaryRotateRight,
+   BinaryExpand,
+   BinaryCompress,
+   BinaryPopCount,
    NumBinaryArithmeticOps,
    UnaryArithmeticAbs,
    UnaryArithmeticSqrt,
@@ -98,7 +101,10 @@ static const TR::InstOpCode::Mnemonic VectorBinaryArithmeticOpCodesForReg[NumBin
    { TR::InstOpCode::bad,              TR::InstOpCode::VPSRAVWRegRegReg, TR::InstOpCode::VPSRAVDRegRegReg, TR::InstOpCode::VPSRAVQRegRegReg, TR::InstOpCode::bad,              TR::InstOpCode::bad           }, // BinaryLogicalShiftRight
    { TR::InstOpCode::bad,              TR::InstOpCode::VPSRLVWRegRegReg, TR::InstOpCode::VPSRLVDRegRegReg, TR::InstOpCode::VPSRLVQRegRegReg, TR::InstOpCode::bad,              TR::InstOpCode::bad           }, // BinaryArithmeticShiftRight
    { TR::InstOpCode::bad,              TR::InstOpCode::bad,              TR::InstOpCode::VPROLVDRegRegReg, TR::InstOpCode::VPROLVQRegRegReg, TR::InstOpCode::bad,              TR::InstOpCode::bad           }, // BinaryRotateLeft
-   { TR::InstOpCode::bad,              TR::InstOpCode::bad,              TR::InstOpCode::VPRORVDRegRegReg, TR::InstOpCode::VPRORVQRegRegReg, TR::InstOpCode::bad,              TR::InstOpCode::bad           }  // BinaryRotateRight
+   { TR::InstOpCode::bad,              TR::InstOpCode::bad,              TR::InstOpCode::VPRORVDRegRegReg, TR::InstOpCode::VPRORVQRegRegReg, TR::InstOpCode::bad,              TR::InstOpCode::bad           }, // BinaryRotateRight
+   { TR::InstOpCode::VPEXPANDBRegReg,  TR::InstOpCode::VPEXPANDWRegReg,  TR::InstOpCode::VPEXPANDDRegReg,  TR::InstOpCode::VPEXPANDQRegReg,  TR::InstOpCode::bad,              TR::InstOpCode::bad           }, // BinaryExpand
+   { TR::InstOpCode::VPCOMPRESSBRegReg,TR::InstOpCode::VPCOMPRESSWRegReg,TR::InstOpCode::VPCOMPRESSDRegReg,TR::InstOpCode::VPCOMPRESSQRegReg,TR::InstOpCode::bad,              TR::InstOpCode::bad           }, // BinaryCompress
+   { TR::InstOpCode::VPOPCNTBRegReg,   TR::InstOpCode::VPOPCNTWRegReg,   TR::InstOpCode::VPOPCNTDRegReg,   TR::InstOpCode::VPOPCNTQRegReg,   TR::InstOpCode::bad,              TR::InstOpCode::bad           }  // BinaryPopCount
    };
 
 static const TR::InstOpCode::Mnemonic VectorBinaryArithmeticOpCodesForMem[NumBinaryArithmeticOps][TR::NumVectorElementTypes] =
