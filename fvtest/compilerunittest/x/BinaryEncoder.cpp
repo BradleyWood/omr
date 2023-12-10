@@ -748,7 +748,9 @@ INSTANTIATE_TEST_CASE_P(GeneralPurposeRegRegTest, XRegRegEncEncodingTest, ::test
 
     std::make_tuple(TR::InstOpCode::TZCNT2RegReg,   TR::RealRegister::eax,  TR::RealRegister::ecx, OMR::X86::Default, "66f30fbcc1"),
     std::make_tuple(TR::InstOpCode::TZCNT4RegReg,   TR::RealRegister::eax,  TR::RealRegister::ecx, OMR::X86::Default, "f30fbcc1"),
-    std::make_tuple(TR::InstOpCode::TZCNT8RegReg,   TR::RealRegister::eax,  TR::RealRegister::ecx, OMR::X86::Default, "f3480fbcc1")
+    std::make_tuple(TR::InstOpCode::TZCNT8RegReg,   TR::RealRegister::eax,  TR::RealRegister::ecx, OMR::X86::Default, "f3480fbcc1"),
+    std::make_tuple(TR::InstOpCode::CRC32QRegReg,   TR::RealRegister::eax,  TR::RealRegister::ecx, OMR::X86::Default, "f2480f38f1c8"),
+    std::make_tuple(TR::InstOpCode::CRC32BRegReg,   TR::RealRegister::eax,  TR::RealRegister::ecx, OMR::X86::Default, "f2480f38f0c8")
 )));
 
 INSTANTIATE_TEST_CASE_P(Branch, XRegRegEncodingTest, ::testing::ValuesIn(*TRTest::MakeVector<std::tuple<TR::InstOpCode::Mnemonic, TR::RealRegister::RegNum, TR::RealRegister::RegNum, TRTest::BinaryInstruction>>(
