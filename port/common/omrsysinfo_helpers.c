@@ -70,7 +70,16 @@
 #define CPUID_FAMILYCODE_INTELCORE                        0x06
 #define CPUID_FAMILYCODE_INTELPENTIUM4                    0x0F
 
-#define CPUID_MODELCODE_INTELSKYLAKE                      0x55
+
+#define CPUID_MODELCODE_INTELSAPHIRERAPIDS                0x8F
+#define CPUID_MODELCODE_INTELICELAKE_1                    0x6C
+#define CPUID_MODELCODE_INTELICELAKE_2                    0x6A
+#define CPUID_MODELCODE_INTELICELAKE_3                    0x7E
+#define CPUID_MODELCODE_INTELCOOPERLAKE                   0x55 // Requires check for AVX-512_FP16
+#define CPUID_MODELCODE_INTELCASCADELAKE                  0x55 // Requires check for AVX-512_VNNI
+#define CPUID_MODELCODE_INTELSKYLAKE_1                    0x55
+#define CPUID_MODELCODE_INTELSKYLAKE_2                    0x5E
+#define CPUID_MODELCODE_INTELSKYLAKE_3                    0x4E
 #define CPUID_MODELCODE_INTELBROADWELL                    0x4F
 #define CPUID_MODELCODE_INTELHASWELL_1                    0x3F
 #define CPUID_MODELCODE_INTELHASWELL_2                    0x3C
@@ -188,7 +197,7 @@ static const char* const OMR_FEATURE_X86_NAME[] = {
 	"null",             /* 2 * 32 + 28 */
 	"null",             /* 2 * 32 + 29 */
 	"null",             /* 2 * 32 + 30 */
-	"null"              /* 2 * 32 + 31 */
+	"null",             /* 2 * 32 + 31 */
 	"fsgsbase",         /* 3 * 32 + 0 */
 	"ia32_tsc_adjust",  /* 3 * 32 + 1 */
 	"sgx",              /* 3 * 32 + 2 */
@@ -272,7 +281,21 @@ omrsysinfo_get_x86_description(struct OMRPortLibrary *portLibrary, OMRProcessorD
 			uint32_t totalModelCode = modelCode + (extendedModelCode << 4);
 
 			switch (totalModelCode) {
-			case CPUID_MODELCODE_INTELSKYLAKE:
+			case CPUID_MODELCODE_INTELSAPHIRERAPIDS:
+				desc->processor = OMR_PROCESSOR_X86_INTELSAPHIRERAPIDS;
+				break;
+			case CPUID_MODELCODE_INTELICELAKE_1:
+			case CPUID_MODELCODE_INTELICELAKE_2:
+			case CPUID_MODELCODE_INTELICELAKE_3:
+                desc->processor = OMR_PROCESSOR_X86_INTELICELAKE;
+				break;
+			case CPUID_MODELCODE_INTELSKYLAKE_1:
+				// Skylake/Cascadelake/Cooperlake share same family id; Check AVX-512 extensions to differentiate
+				// if (SUPPORTS AVX-512_VNNI) -> CASCADELAKE; break;
+				// else if (SUPPORTS AVX-512_FP16) -> COOPERLAKE; break;
+                // todo
+			case CPUID_MODELCODE_INTELSKYLAKE_2:
+			case CPUID_MODELCODE_INTELSKYLAKE_3:
 				desc->processor = OMR_PROCESSOR_X86_INTELSKYLAKE;
 				break;
 			case CPUID_MODELCODE_INTELBROADWELL:
@@ -302,6 +325,7 @@ omrsysinfo_get_x86_description(struct OMRPortLibrary *portLibrary, OMRProcessorD
 				desc->processor = OMR_PROCESSOR_X86_INTELCORE2;
 				break;
 			default:
+                printf("gg %i\n\n\n", totalModelCode);
 				desc->processor = OMR_PROCESSOR_X86_INTELP6;
 				break;
 			}

@@ -164,7 +164,20 @@ void TR_X86ProcessorInfo::initialize(bool force)
             uint32_t extended_model = getCPUModel(_processorSignature) + (getCPUExtendedModel(_processorSignature) << 4);
             switch (extended_model)
                {
+               case 0x8f:
+                   _processorDescription |= TR_ProcessorIntelSaphireRapids; break;
+               case 0x6a:
+               case 0x6c:
+               case 0x7e:
+                  _processorDescription |= TR_ProcessorIntelIcelake; break;
                case 0x55:
+                   // if (supportsAVX512VNNI()) _processorDescription |= TR_ProcessorIntelCascadelake; break;
+                   // else if (supportsAVX512FP16()) _processorDescription |= TR_ProcessorIntelCooperlake; break;
+                   // else
+                   // todo
+                   _processorDescription |= TR_ProcessorIntelSkylake; break;
+               case 0x5e:
+               case 0x4e:
                   _processorDescription |= TR_ProcessorIntelSkylake; break;
                case 0x4f:
                   _processorDescription |= TR_ProcessorIntelBroadwell; break;

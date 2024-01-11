@@ -206,6 +206,10 @@ struct TR_X86ProcessorInfo
    bool isIntelHaswell()      { return (_processorDescription & 0x000000ff) == TR_ProcessorIntelHaswell; }
    bool isIntelBroadwell()    { return (_processorDescription & 0x000000ff) == TR_ProcessorIntelBroadwell; }
    bool isIntelSkylake()      { return (_processorDescription & 0x000000ff) == TR_ProcessorIntelSkylake; }
+   bool isIntelCascadelake()  { return (_processorDescription & 0x000000ff) == TR_ProcessorIntelCascadelake; }
+   bool isIntelCooperlake()   { return (_processorDescription & 0x000000ff) == TR_ProcessorIntelCooperlake; }
+   bool isIntelIcelake()      { return (_processorDescription & 0x000000ff) == TR_ProcessorIntelIcelake; }
+   bool isIntelSaphireRapids(){ return (_processorDescription & 0x000000ff) == TR_ProcessorIntelSaphireRapids; }
 
    bool isIntelOldMachine()   { return (isIntelPentium() || isIntelP6() || isIntelPentium4() || isIntelCore2() || isIntelTulsa() || isIntelNehalem()); }
 

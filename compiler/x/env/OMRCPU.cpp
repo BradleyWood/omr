@@ -453,6 +453,18 @@ OMR::X86::CPU::is_old_api(OMRProcessorArchitecture p)
       case OMR_PROCESSOR_X86_INTELSKYLAKE:
          ans = TR::CodeGenerator::getX86ProcessorInfo().isIntelSkylake();
          break;
+      case OMR_PROCESSOR_X86_INTELCASCADELAKE:
+         ans = TR::CodeGenerator::getX86ProcessorInfo().isIntelCascadelake();
+         break;
+      case OMR_PROCESSOR_X86_INTELCOOPERELAKE:
+         ans = TR::CodeGenerator::getX86ProcessorInfo().isIntelCooperlake();
+         break;
+      case OMR_PROCESSOR_X86_INTELICELAKE:
+         ans = TR::CodeGenerator::getX86ProcessorInfo().isIntelIcelake();
+         break;
+      case OMR_PROCESSOR_X86_INTELSAPHIRERAPIDS:
+         ans = TR::CodeGenerator::getX86ProcessorInfo().isIntelSaphireRapids();
+         break;
       case OMR_PROCESSOR_X86_AMDATHLONDURON:
          ans = TR::CodeGenerator::getX86ProcessorInfo().isAMDAthlonDuron();
          break;
@@ -681,6 +693,22 @@ OMR::X86::CPU::getProcessorName()
 
       case OMR_PROCESSOR_X86_INTELSKYLAKE:
          returnString = "X86 Intel Skylake";
+         break;
+
+      case OMR_PROCESSOR_X86_INTELCASCADELAKE:
+         returnString = "X86 Intel Cascadelake";
+         break;
+
+      case OMR_PROCESSOR_X86_INTELCOOPERELAKE:
+         returnString = "X86 Intel Cooperlake";
+         break;
+
+      case OMR_PROCESSOR_X86_INTELICELAKE:
+         returnString = "X86 Intel Icelake";
+         break;
+
+      case OMR_PROCESSOR_X86_INTELSAPHIRERAPIDS:
+         returnString = "X86 Intel Saphire Rapids";
          break;
 
       case OMR_PROCESSOR_X86_AMDK5:
