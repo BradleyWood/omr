@@ -75,12 +75,6 @@ OMR::X86::CPU::detect(OMRPortLibrary * const omrPortLib)
    return TR::CPU(processorDescription);
    }
 
-void
-OMR::X86::CPU::initializeTargetProcessorInfo(bool force)
-   {
-   OMR::X86::CodeGenerator::initializeX86TargetProcessorInfo(force);
-   }
-
 TR_X86CPUIDBuffer *
 OMR::X86::CPU::queryX86TargetCPUID()
    {
@@ -167,18 +161,14 @@ OMR::X86::CPU::supportsTransactionalMemoryInstructions()
 bool
 OMR::X86::CPU::isGenuineIntel()
    {
-   if (TR::Compiler->omrPortLib == NULL)
-      return TR::CodeGenerator::getX86ProcessorInfo().isGenuineIntel();
-
+   TR_ASSERT_FATAL(TR::Compiler->omrPortLib != NULL, "OMR Compiler requires the port library to perform CPU model tests");
    return self()->isAtLeast(OMR_PROCESSOR_X86_INTEL_FIRST) && self()->isAtMost(OMR_PROCESSOR_X86_INTEL_LAST);
    }
 
 bool
 OMR::X86::CPU::isAuthenticAMD()
    {
-   if (TR::Compiler->omrPortLib == NULL)
-      return TR::CodeGenerator::getX86ProcessorInfo().isAuthenticAMD();
-
+   TR_ASSERT_FATAL(TR::Compiler->omrPortLib != NULL, "OMR Compiler requires the port library to perform CPU model tests");
    return self()->isAtLeast(OMR_PROCESSOR_X86_AMD_FIRST) && self()->isAtMost(OMR_PROCESSOR_X86_AMD_LAST);
    }
 
@@ -191,45 +181,35 @@ OMR::X86::CPU::requiresLFence()
 bool
 OMR::X86::CPU::supportsMFence()
    {
-   if (TR::Compiler->omrPortLib == NULL)
-      return TR::CodeGenerator::getX86ProcessorInfo().supportsMFence();
-
+   TR_ASSERT_FATAL(TR::Compiler->omrPortLib != NULL, "OMR Compiler requires the port library to perform CPU feature tests");
    return self()->supportsFeature(OMR_FEATURE_X86_SSE2);
    }
 
 bool
 OMR::X86::CPU::supportsLFence()
    {
-   if (TR::Compiler->omrPortLib == NULL)
-      return TR::CodeGenerator::getX86ProcessorInfo().supportsLFence();
-
+   TR_ASSERT_FATAL(TR::Compiler->omrPortLib != NULL, "OMR Compiler requires the port library to perform CPU feature tests");
    return self()->supportsFeature(OMR_FEATURE_X86_SSE2);
    }
 
 bool
 OMR::X86::CPU::supportsSFence()
    {
-   if (TR::Compiler->omrPortLib == NULL)
-      return TR::CodeGenerator::getX86ProcessorInfo().supportsSFence();
-
+   TR_ASSERT_FATAL(TR::Compiler->omrPortLib != NULL, "OMR Compiler requires the port library to perform CPU model tests");
    return self()->supportsFeature(OMR_FEATURE_X86_SSE2) || self()->supportsFeature(OMR_FEATURE_X86_MMX);
    }
 
 bool
 OMR::X86::CPU::prefersMultiByteNOP()
    {
-   if (TR::Compiler->omrPortLib == NULL)
-      return TR::CodeGenerator::getX86ProcessorInfo().prefersMultiByteNOP();
-
+   TR_ASSERT_FATAL(TR::Compiler->omrPortLib != NULL, "OMR Compiler requires the port library to perform CPU model tests");
    return self()->isGenuineIntel() && !self()->is(OMR_PROCESSOR_X86_INTELPENTIUM);
    }
 
 bool
 OMR::X86::CPU::supportsAVX()
    {
-   if (TR::Compiler->omrPortLib == NULL)
-      return TR::CodeGenerator::getX86ProcessorInfo().supportsAVX();
-
+   TR_ASSERT_FATAL(TR::Compiler->omrPortLib != NULL, "OMR Compiler requires the port library to perform CPU feature tests");
    return self()->supportsFeature(OMR_FEATURE_X86_AVX) && self()->supportsFeature(OMR_FEATURE_X86_OSXSAVE);
    }
 

@@ -2706,7 +2706,7 @@ TR::Register *OMR::X86::TreeEvaluator::arraysetEvaluator(TR::Node *node, TR::Cod
    bool isShortConstantArrayWithZero = false;
 
    static bool isConstArraysetEnabled = (NULL == feGetEnv("TR_DisableConstArrayset"));
-   TR_ASSERT_FATAL(cg->comp()->compileRelocatableCode() || cg->comp()->isOutOfProcessCompilation() || cg->comp()->compilePortableCode() || cg->comp()->target().cpu.supportsFeature(OMR_FEATURE_X86_SSSE3) == cg->getX86ProcessorInfo().supportsSSSE3(), "supportsSSSE3() failed!\n");
+   TR_ASSERT_FATAL(cg->comp()->compileRelocatableCode() || cg->comp()->isOutOfProcessCompilation() || cg->comp()->compilePortableCode() || cg->comp()->target().cpu.supportsFeature(OMR_FEATURE_X86_SSSE3), "supportsSSSE3() failed!\n");
    if (isConstArraysetEnabled && cg->comp()->target().cpu.supportsFeature(OMR_FEATURE_X86_SSSE3) && cg->comp()->target().is64Bit())
       {
       if (valueNode->getOpCode().isLoadConst() && !valueNode->getOpCode().isFloat() && !valueNode->getOpCode().isDouble())
@@ -4650,7 +4650,7 @@ TR::Register* OMR::X86::TreeEvaluator::floatingPointBinaryArithmeticEvaluator(TR
    TR::Node* operandNode0 = node->getChild(0);
    TR::Node* operandNode1 = node->getChild(1);
 
-   TR_ASSERT_FATAL(cg->comp()->compileRelocatableCode() || cg->comp()->isOutOfProcessCompilation() || cg->comp()->compilePortableCode() || cg->comp()->target().cpu.supportsAVX() == TR::CodeGenerator::getX86ProcessorInfo().supportsAVX(), "supportsAVX() failed\n");
+   TR_ASSERT_FATAL(cg->comp()->compileRelocatableCode() || cg->comp()->isOutOfProcessCompilation() || cg->comp()->compilePortableCode() || cg->comp()->target().cpu.supportsAVX(), "supportsAVX() failed\n");
    bool useRegMemForm = cg->comp()->target().cpu.supportsAVX();
 
    if (useRegMemForm)

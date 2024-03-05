@@ -103,7 +103,7 @@ template <typename TBuffer> typename TBuffer::cursor_t OMR::X86::InstOpCode::OpC
    TR::Instruction::REX rex(rexbits);
    rex.W = rex_w;
 
-   TR_ASSERT_FATAL(comp->compileRelocatableCode() || comp->isOutOfProcessCompilation() || comp->compilePortableCode() || comp->target().cpu.supportsAVX() == TR::CodeGenerator::getX86ProcessorInfo().supportsAVX(), "supportsAVX() failed\n");
+   TR_ASSERT_FATAL(comp->compileRelocatableCode() || comp->isOutOfProcessCompilation() || comp->compilePortableCode() || comp->target().cpu.supportsAVX(), "supportsAVX() failed\n");
 
    if (enc != VEX_L___)
       {
