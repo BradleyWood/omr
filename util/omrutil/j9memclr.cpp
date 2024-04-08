@@ -142,7 +142,38 @@ OMRZeroMemory(void *ptr, uintptr_t length)
 		memset(ptr, 0, (size_t)length);
 	}
 #else /* (defined (LINUX) && defined(S390)) && !defined(OMRZTPF) */
-	memset(ptr, 0, (size_t)length);
+
+    unsigned int reg;
+    int edi;
+    __asm__ __volatile__(
+            "	mov	%%ecx, %1\n"
+            "	shr	$3, %%rcx\n"
+            "	movzx	%%al, %%eax\n" /* 3 bytes */
+            "   movabs	$0x0101010101010101,%%r8 \n"
+            "   imul	%%r8, %%rax\n"
+            "	rep; stosq\n"
+            "   and	$7, %1\n"
+            "	mov	%1, %%ecx\n"
+            "   rep; stosb\n"
+            : "=&D" (edi), "=&r" (reg)
+            : "0" (ptr), "a" (0), "c" (length)
+            : "memory"
+            );
+    __asm__ __volatile__(
+            "	mov	%%ecx, %1\n"
+            "	shr	$3, %%rcx\n"
+            "	movzx	%%al, %%eax\n" /* 3 bytes */
+            "   movabs	$0x0101010101010101,%%r8 \n"
+            "   imul	%%r8, %%rax\n"
+            "	rep; stosq\n"
+            "   and	$7, %1\n"
+            "	mov	%1, %%ecx\n"
+            "   rep; stosb\n"
+            : "=&D" (edi), "=&r" (reg)
+            : "0" (ptr), "a" (0), "c" (length)
+            : "memory"
+            );
+
 #endif
 }
 
