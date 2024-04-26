@@ -163,6 +163,8 @@ struct TR_X86ProcessorInfo
    bool supportsSSE4_2()                   {return testFeatureFlags2(TR_SSE4_2);}
    bool supportsAVX()                      {return testFeatureFlags2(TR_AVX) && enabledXSAVE();}
    bool supportsAVX2()                     {return testFeatureFlags8(TR_AVX2) && enabledXSAVE();}
+
+#if defined(TR_TARGET_64BIT)
    bool supportsAVX512F()                  {return testFeatureFlags8(TR_AVX512F) && enabledXSAVE();}
    bool supportsAVX512BW()                 {return testFeatureFlags8(TR_AVX512BW) && enabledXSAVE();}
    bool supportsAVX512DQ()                 {return testFeatureFlags8(TR_AVX512DQ) && enabledXSAVE();}
@@ -171,6 +173,17 @@ struct TR_X86ProcessorInfo
    bool supportsAVX512VBMI2()              {return testFeatureFlags10(TR_AVX512_VBMI2) && enabledXSAVE();}
    bool supportsAVX512BITALG()             {return testFeatureFlags10(TR_AVX512_BITALG) && enabledXSAVE();}
    bool supportsAVX512VPOPCNTDQ()          {return testFeatureFlags10(TR_AVX512_VPOPCNTDQ) && enabledXSAVE();}
+#else
+   bool supportsAVX512F()                  { return false; }
+   bool supportsAVX512BW()                 { return false; }
+   bool supportsAVX512DQ()                 { return false; }
+   bool supportsAVX512CD()                 { return false; }
+   bool supportsAVX512VL()                 { return false; }
+   bool supportsAVX512VBMI2()              { return false; }
+   bool supportsAVX512BITALG()             { return false; }
+   bool supportsAVX512VPOPCNTDQ()          { return false; }
+#endif
+
    bool supportsBMI1()                     {return testFeatureFlags8(TR_BMI1) && enabledXSAVE();}
    bool supportsBMI2()                     {return testFeatureFlags8(TR_BMI2) && enabledXSAVE();}
    bool supportsFMA()                      {return testFeatureFlags2(TR_FMA) && enabledXSAVE();}

@@ -391,6 +391,7 @@ OMR::X86::CPU::supports_feature_test(uint32_t feature)
          return TR::CodeGenerator::getX86ProcessorInfo().supportsAVX() == ans;
       case OMR_FEATURE_X86_AVX2:
          return TR::CodeGenerator::getX86ProcessorInfo().supportsAVX2();
+#if defined(TR_TARGET_64BIT)
       case OMR_FEATURE_X86_AVX512F:
          return TR::CodeGenerator::getX86ProcessorInfo().supportsAVX512F();
       case OMR_FEATURE_X86_AVX512VL:
@@ -407,6 +408,7 @@ OMR::X86::CPU::supports_feature_test(uint32_t feature)
          return TR::CodeGenerator::getX86ProcessorInfo().supportsAVX512BITALG();
       case OMR_FEATURE_X86_AVX512_VPOPCNTDQ:
          return TR::CodeGenerator::getX86ProcessorInfo().supportsAVX512VPOPCNTDQ();
+#endif
       default:
          return false;
       }
