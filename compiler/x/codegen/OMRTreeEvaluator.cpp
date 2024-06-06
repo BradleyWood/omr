@@ -2784,15 +2784,16 @@ TR::Register *OMR::X86::TreeEvaluator::arraytranslateEvaluator(TR::Node *node, T
    bool stopUsingCopyReg5 = TR::TreeEvaluator::stopUsingCopyRegInteger(node->getChild(4), lengthReg, cg);
    TR::Register *resultReg = cg->allocateRegister();
    TR::Register *dummy1 = cg->allocateRegister();
-   TR::Register *dummy2 = cg->allocateRegister(TR_FPR);
-   TR::Register *dummy3 = cg->allocateRegister(TR_FPR);
-   TR::Register *dummy4 = cg->allocateRegister(TR_FPR);
+   TR::Register *dummyVectors[8];
+   for (int i = 0; i <= 7; i++) {
+       dummyVectors[i] = cg->allocateRegister(TR_VRF);
+   }
 
    bool arraytranslateOT = false;
    if  (sourceByte && (node->getChild(3)->getOpCodeValue() == TR::iconst) && (node->getChild(3)->getInt() == 0))
       arraytranslateOT = true;
 
-   int noOfDependencies = (sourceByte && !arraytranslateOT) ? 8 : 9;
+   int noOfDependencies = (sourceByte && !arraytranslateOT) ? 13 : 14;
 
 
    TR::RegisterDependencyConditions  *dependencies =
@@ -2802,12 +2803,10 @@ TR::Register *OMR::X86::TreeEvaluator::arraytranslateEvaluator(TR::Node *node, T
    dependencies->addPostCondition(lengthReg, TR::RealRegister::ecx, cg);
    dependencies->addPostCondition(resultReg, TR::RealRegister::eax, cg);
 
-
    dependencies->addPostCondition(dummy1, TR::RealRegister::ebx, cg);
-   dependencies->addPostCondition(dummy2, TR::RealRegister::xmm1, cg);
-   dependencies->addPostCondition(dummy3, TR::RealRegister::xmm2, cg);
-   dependencies->addPostCondition(dummy4, TR::RealRegister::xmm3, cg);
-
+   for (int i = 0; i <= 7; i++) {
+       dependencies->addPostCondition(dummyVectors[i], static_cast<TR::RealRegister::RegNum>(TR::RealRegister::xmm0 + i), cg);
+   }
 
    TR_RuntimeHelper helper ;
    if (sourceByte)
@@ -2831,9 +2830,10 @@ TR::Register *OMR::X86::TreeEvaluator::arraytranslateEvaluator(TR::Node *node, T
    dependencies->stopAddingConditions();
    generateHelperCallInstruction(node, helper, dependencies, cg);
    cg->stopUsingRegister(dummy1);
-   cg->stopUsingRegister(dummy2);
-   cg->stopUsingRegister(dummy3);
-   cg->stopUsingRegister(dummy4);
+
+   for (int i = 0; i <= 7; i++) {
+      cg->stopUsingRegister(dummyVectors[i]);
+   }
 
    for (uint16_t i = 0; i < node->getNumChildren(); i++)
       cg->decReferenceCount(node->getChild(i));
