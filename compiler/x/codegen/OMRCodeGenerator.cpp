@@ -1975,9 +1975,45 @@ void OMR::X86::CodeGenerator::addItemsToRSSReport(uint8_t *coldCode)
          }
       }
    }
+inline unsigned long long _xgetbv(unsigned int ecx)
+   {
+   unsigned int eax, edx;
+   __asm__ __volatile__("xgetbv" : "=a"(eax), "=d"(edx) : "c"(ecx));
+   return ((unsigned long long)edx << 32) | eax;
+   }
 
 void OMR::X86::CodeGenerator::doBinaryEncoding()
    {
+   bool sse2 = self()->comp()->target().cpu.supportsFeature(OMR_FEATURE_X86_SSE2);
+   bool sse3 = self()->comp()->target().cpu.supportsFeature(OMR_FEATURE_X86_SSE3);
+   bool sse41 = self()->comp()->target().cpu.supportsFeature(OMR_FEATURE_X86_SSE4_1);
+   bool sse42 = self()->comp()->target().cpu.supportsFeature(OMR_FEATURE_X86_SSE4_2);
+   bool avx = self()->comp()->target().cpu.supportsFeature(OMR_FEATURE_X86_AVX);
+   bool avx2 = self()->comp()->target().cpu.supportsFeature(OMR_FEATURE_X86_AVX2);
+   bool avx512 = self()->comp()->target().cpu.supportsFeature(OMR_FEATURE_X86_AVX512F);
+   bool avx512vl = self()->comp()->target().cpu.supportsFeature(OMR_FEATURE_X86_AVX512VL);
+   bool avx512bw = self()->comp()->target().cpu.supportsFeature(OMR_FEATURE_X86_AVX512BW);
+   bool avx512dq = self()->comp()->target().cpu.supportsFeature(OMR_FEATURE_X86_AVX512DQ);
+
+   traceMsg(self()->comp(), "CG^ Supports OMR_FEATURE_X86_SSE2: %s\n",     sse2 ? "TRUE" : "FALSE");
+   traceMsg(self()->comp(), "CG^ Supports OMR_FEATURE_X86_SSE3: %s\n",     sse3 ? "TRUE" : "FALSE");
+   traceMsg(self()->comp(), "CG^ Supports OMR_FEATURE_X86_SSE4_1: %s\n",   sse41 ? "TRUE" : "FALSE");
+   traceMsg(self()->comp(), "CG^ Supports OMR_FEATURE_X86_SSE4_2: %s\n",   sse42 ? "TRUE" : "FALSE");
+   traceMsg(self()->comp(), "CG^ Supports OMR_FEATURE_X86_AVX: %s\n",      avx ? "TRUE" : "FALSE");
+   traceMsg(self()->comp(), "CG^ Supports OMR_FEATURE_X86_AVX2: %s\n",     avx2 ? "TRUE" : "FALSE");
+   traceMsg(self()->comp(), "CG^ Supports OMR_FEATURE_X86_AVX512F: %s\n",  avx512 ? "TRUE" : "FALSE");
+   traceMsg(self()->comp(), "CG^ Supports OMR_FEATURE_X86_AVX512VL: %s\n", avx512vl ? "TRUE" : "FALSE");
+   traceMsg(self()->comp(), "CG^ Supports OMR_FEATURE_X86_AVX512BW: %s\n", avx512bw ? "TRUE" : "FALSE");
+   traceMsg(self()->comp(), "CG^ Supports OMR_FEATURE_X86_AVX512DQ: %s\n", avx512dq ? "TRUE" : "FALSE");
+
+   unsigned long long xcr0 = _xgetbv(0);
+   bool ymm = (6 & _xgetbv(0));
+   bool zmm = (0xe6 & _xgetbv(0));
+
+   traceMsg(self()->comp(), "CG^ XCR0 %llu\n", xcr0);
+   traceMsg(self()->comp(), "CG^ Supports YMM: %s\n", ymm ? "TRUE" : "FALSE");
+   traceMsg(self()->comp(), "CG^ Supports ZMM: %s\n", zmm ? "TRUE" : "FALSE");
+
    LexicalTimer pt1("code generation", self()->comp()->phaseTimer());
 
    // Generate fixup code for the interpreter entry point right before TR::InstOpCode::proc

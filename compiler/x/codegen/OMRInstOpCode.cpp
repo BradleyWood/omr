@@ -89,6 +89,11 @@ template <typename TBuffer> typename TBuffer::cursor_t OMR::X86::InstOpCode::OpC
       enc = comp->target().cpu.supportsAVX() ? vex_l : OMR::X86::Legacy;
       }
 
+   if (encoding != OMR::X86::Default)
+      {
+      traceMsg(comp, "\nCG^ Binary Encoding - encode() : encoding vector instruction with method opcode(%d) %s\n", opcode, OMR::X86::encodingToString(encoding));
+      }
+
    TBuffer buffer(cursor);
    if (isX87())
       {

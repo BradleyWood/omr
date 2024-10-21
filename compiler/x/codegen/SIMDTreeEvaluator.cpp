@@ -151,6 +151,8 @@ TR::Register* OMR::X86::TreeEvaluator::SIMDloadEvaluator(TR::Node* node, TR::Cod
 
    OMR::X86::Encoding encoding = opCode.getSIMDEncoding(&cg->comp()->target().cpu, node->getType().getVectorLength());
 
+   traceMsg(cg->comp(), "CG^ Generating vload instruction: %s : %s\n", cg->comp()->getDebug()->getOpCodeName(&opCode), OMR::X86::encodingToString(encoding));
+
    if (node->getSize() != 16 && node->getSize() != 32 && node->getSize() != 64)
       {
       if (cg->comp()->getOption(TR_TraceCG))

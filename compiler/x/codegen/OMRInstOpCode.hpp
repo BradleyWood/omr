@@ -237,6 +237,30 @@ typedef enum
    Bad       = 0x7
    } Encoding;
 
+inline char *encodingToString(Encoding encoding)
+   {
+   switch (encoding)
+      {
+      case VEX_L128:
+         return "VEX_L128";
+      case VEX_L256:
+         return "VEX_L256";
+      case Legacy:
+         return "Legacy";
+      case Default:
+         return "Default";
+      case EVEX_L128:
+         return "EVEX_L128";
+      case EVEX_L256:
+         return "EVEX_L256";
+      case EVEX_L512:
+         return "EVEX_L512";
+      case Bad:
+      default:
+         return "BAD";
+      }
+   }
+
 class InstOpCode: public OMR::InstOpCode
    {
    enum TR_OpCodeVEX_L : uint8_t

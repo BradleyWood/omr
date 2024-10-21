@@ -5726,6 +5726,8 @@ TR::Register* OMR::X86::TreeEvaluator::vectorBinaryArithmeticEvaluator(TR::Node*
       nativeOpcode = getNativeSIMDOpcode(opcode, type, useRegMemForm);
       }
 
+
+
    TR_ASSERT_FATAL(nativeOpcode.getMnemonic() != TR::InstOpCode::bad, "Unsupported vector operation for given element type: %s",
              type.getVectorElementType().toString());
 
@@ -5738,6 +5740,8 @@ TR::Register* OMR::X86::TreeEvaluator::vectorBinaryArithmeticEvaluator(TR::Node*
 
    OMR::X86::Encoding simdEncoding = nativeOpcode.getSIMDEncoding(&cg->comp()->target().cpu, type.getVectorLength());
    TR_ASSERT_FATAL_WITH_NODE(node, simdEncoding != Bad, "This x86 opcode is not supported by the target CPU");
+
+   traceMsg(cg->comp(), "CG^ vectorBinaryArithmeticEvaluator: %s : %s\n", cg->comp()->getDebug()->getOpCodeName(&nativeOpcode), OMR::X86::encodingToString(simdEncoding));
 
    if (cg->comp()->target().cpu.supportsAVX())
       {

@@ -982,8 +982,12 @@ TR::RealRegister *OMR::X86::Machine::freeBestGPRegister(TR::Instruction         
          }
       else if (bestRegister->getKind() == TR_VRF)
          {
+         TR::InstOpCode tmp = self()->cg()->comp()->target().cpu.supportsAVX() ? InstOpCode::VMOVDQUYmmMem : TR::InstOpCode::MOVDQURegMem;
+         tmp = self()->cg()->comp()->target().cpu.supportsFeature(OMR_FEATURE_X86_AVX512F) ? InstOpCode::VMOVDQUZmmMem : tmp;
+
          op = self()->cg()->comp()->target().cpu.supportsAVX() ? InstOpCode::VMOVDQUYmmMem : TR::InstOpCode::MOVDQURegMem;
          op = self()->cg()->comp()->target().cpu.supportsFeature(OMR_FEATURE_X86_AVX512F) ? InstOpCode::VMOVDQUZmmMem : op;
+         traceMsg(self()->cg()->comp(), "CG^ Generating vload instruction (from spill): %s : %s\n", self()->cg()->comp()->getDebug()->getOpCodeName(&tmp), OMR::X86::encodingToString(OMR::X86::Default));
          }
       else if (bestRegister->getKind() == TR_VMR)
          {
