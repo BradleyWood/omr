@@ -79,9 +79,8 @@ void OMR::X86::InstOpCode::trackUpperBitsOnReg(TR::Register *reg, TR::CodeGenera
       }
    }
 
-template <typename TBuffer> typename TBuffer::cursor_t OMR::X86::InstOpCode::OpCode_t::encode(typename TBuffer::cursor_t cursor, OMR::X86::Encoding encoding, uint8_t rexbits) const
+template <typename TBuffer> typename TBuffer::cursor_t OMR::X86::InstOpCode::OpCode_t::encode(typename TBuffer::cursor_t cursor, OMR::X86::Encoding encoding, uint8_t rexbits, TR::CodeGenerator *cg) const
    {
-   TR::Compilation *comp = TR::comp();
    uint32_t enc = encoding;
 
    if (encoding == OMR::X86::Default)
@@ -89,7 +88,7 @@ template <typename TBuffer> typename TBuffer::cursor_t OMR::X86::InstOpCode::OpC
 #if !defined(J9VM_OPT_JITSERVER) && !defined(J9VM_OPT_CRIU_SUPPORT)
       static
 #endif
-      bool avxSupport = comp->target().cpu.supportsAVX();
+      bool avxSupport = cg->comp()->target().cpu.supportsAVX();
       enc = avxSupport ? vex_l : OMR::X86::Legacy;
       }
 
@@ -256,13 +255,13 @@ void OMR::X86::InstOpCode::CheckAndFinishGroup07(uint8_t* cursor) const
       }
    }
 
-uint8_t OMR::X86::InstOpCode::length(OMR::X86::Encoding encoding, uint8_t rex) const
+uint8_t OMR::X86::InstOpCode::length(OMR::X86::Encoding encoding, uint8_t rex, TR::CodeGenerator *cg) const
    {
-   return encode<Estimator>(0, encoding, rex);
+   return encode<Estimator>(0, encoding, rex, cg);
    }
-uint8_t* OMR::X86::InstOpCode::binary(uint8_t* cursor, OMR::X86::Encoding encoding, uint8_t rex) const
+uint8_t* OMR::X86::InstOpCode::binary(uint8_t* cursor, OMR::X86::Encoding encoding, uint8_t rex, TR::CodeGenerator *cg) const
    {
-   uint8_t* ret = encode<Writer>(cursor, encoding, rex);
+   uint8_t* ret = encode<Writer>(cursor, encoding, rex, cg);
    CheckAndFinishGroup07(ret);
    return ret;
    }

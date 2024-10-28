@@ -3097,14 +3097,14 @@ uint8_t *OMR::X86::CodeGenerator::generatePadding(uint8_t              *cursor,
          if (length >= 5)
             {
             length -= 5;
-            cursor = TR::InstOpCode(TR::InstOpCode::JMP4).binary(cursor, X86::Encoding::Default);
+            cursor = TR::InstOpCode(TR::InstOpCode::JMP4).binary(cursor, X86::Encoding::Default, 0, self());
             *(int32_t*)cursor = static_cast<int32_t>(length);
             cursor += 4;
             }
          else
             {
             length -= 2;
-            cursor = TR::InstOpCode(TR::InstOpCode::JMP1).binary(cursor, X86::Encoding::Default);
+            cursor = TR::InstOpCode(TR::InstOpCode::JMP1).binary(cursor, X86::Encoding::Default, 0, self());
             *(int8_t*)cursor = static_cast<int8_t>(length);
             cursor += 1;
             }

@@ -168,11 +168,11 @@ int32_t estimateMemoryBarrierBinaryLength(int32_t barrier, TR::CodeGenerator *cg
    if (barrier & LockOR)
       length = 5;
    else if ((barrier & kLoadFence) && cg->comp()->target().cpu.requiresLFence())
-      length = TR::InstOpCode(TR::InstOpCode::LFENCE).length(OMR::X86::Default);
+      length = TR::InstOpCode(TR::InstOpCode::LFENCE).length(OMR::X86::Default, 0, cg);
    else if ((barrier & kMemoryFence) == kMemoryFence)
-      length = TR::InstOpCode(TR::InstOpCode::MFENCE).length(OMR::X86::Default);
+      length = TR::InstOpCode(TR::InstOpCode::MFENCE).length(OMR::X86::Default, 0, cg);
    else if (barrier & kStoreFence)
-      length = TR::InstOpCode(TR::InstOpCode::SFENCE).length(OMR::X86::Default);
+      length = TR::InstOpCode(TR::InstOpCode::SFENCE).length(OMR::X86::Default, 0, cg);
 
    return length;
    }
@@ -214,7 +214,7 @@ uint8_t* OMR::X86::Instruction::generateBinaryEncoding()
          *cursor++ = 0xf0;
          }
       cursor = self()->generateRepeatedRexPrefix(cursor);
-      cursor = self()->getOpCode().binary(cursor, self()->getEncodingMethod(), self()->rexBits());
+      cursor = self()->getOpCode().binary(cursor, self()->getEncodingMethod(), self()->rexBits(), self()->cg());
       cursor = self()->generateOperand(cursor);
       // cursor is normal not NULL, and hence we can finish binary encoding and exit the loop
       // cursor is NULL when generateOperand() requests to regenerate the binary code, which may happen during encoding of memref with unresolved symbols on 64-bit
@@ -233,7 +233,7 @@ uint8_t* OMR::X86::Instruction::generateBinaryEncoding()
 
 int32_t OMR::X86::Instruction::estimateBinaryLength(int32_t currentEstimate)
    {
-   self()->setEstimatedBinaryLength(self()->getOpCode().length(self()->getEncodingMethod(), self()->rexBits()) + (self()->needsRepPrefix() ? 1 : 0));
+   self()->setEstimatedBinaryLength(self()->getOpCode().length(self()->getEncodingMethod(), self()->rexBits(), self()->cg()) + (self()->needsRepPrefix() ? 1 : 0));
    return currentEstimate + self()->getEstimatedBinaryLength();
    }
 
@@ -450,7 +450,7 @@ uint8_t *TR::X86LabelInstruction::generateBinaryEncoding()
          {
          // Dummy instruction - stays a long branch and gets a zero distance
          //
-         cursor = getOpCode().binary(instructionStart, self()->getEncodingMethod(), self()->rexBits());
+         cursor = getOpCode().binary(instructionStart, self()->getEncodingMethod(), self()->rexBits(), self()->cg());
          immediateCursor = cursor;
          *(uint32_t *)cursor = 0;
          cursor += 4;
@@ -491,7 +491,7 @@ uint8_t *TR::X86LabelInstruction::generateBinaryEncoding()
                getOpCode().convertLongBranchToShort();
                }
 
-            cursor = getOpCode().binary(instructionStart, self()->getEncodingMethod(), self()->rexBits());
+            cursor = getOpCode().binary(instructionStart, self()->getEncodingMethod(), self()->rexBits(), self()->cg());
             immediateCursor = cursor;
 
             if (label->getCodeLocation() != NULL)
@@ -520,12 +520,12 @@ uint8_t *TR::X86LabelInstruction::generateBinaryEncoding()
                comp->failCompilation<TR::CompilationException>("short form branch displacement too large");
                }
 
-            cursor = getOpCode().binary(instructionStart, self()->getEncodingMethod(), self()->rexBits());
+            cursor = getOpCode().binary(instructionStart, self()->getEncodingMethod(), self()->rexBits(), self()->cg());
             immediateCursor = cursor;
 
             if (label->getCodeLocation() != NULL)
                {
-               *(int32_t *)cursor = distance + IA32LengthOfShortBranch - getOpCode().length(self()->getEncodingMethod(), self()->rexBits()) - 4;
+               *(int32_t *)cursor = distance + IA32LengthOfShortBranch - getOpCode().length(self()->getEncodingMethod(), self()->rexBits(), self()->cg()) - 4;
                }
             else
                {
@@ -544,7 +544,7 @@ uint8_t *TR::X86LabelInstruction::generateBinaryEncoding()
       }
    else // assume absolute code address referencing instruction like push label
       {
-      cursor = getOpCode().binary(instructionStart, self()->getEncodingMethod(), self()->rexBits());
+      cursor = getOpCode().binary(instructionStart, self()->getEncodingMethod(), self()->rexBits(), self()->cg());
       immediateCursor = cursor;
       cg()->addRelocation(new (cg()->trHeapMemory()) TR::LabelAbsoluteRelocation(cursor, label));
       *(uint32_t *)cursor = 0;
@@ -571,8 +571,8 @@ uint8_t TR::X86LabelInstruction::getBinaryLengthLowerBound()
       }
 
    if (getOpCode().isBranchOp())
-      return getOpCode().length(self()->getEncodingMethod(), self()->rexBits()) + (_permitShortening ? 0 : 4);
-   return getOpCode().length(self()->getEncodingMethod(), self()->rexBits()) + 4; // assume absolute code reference
+      return getOpCode().length(self()->getEncodingMethod(), self()->rexBits(), self()->cg()) + (_permitShortening ? 0 : 4);
+   return getOpCode().length(self()->getEncodingMethod(), self()->rexBits(), self()->cg()) + 4; // assume absolute code reference
    }
 
 
@@ -635,7 +635,7 @@ int32_t TR::X86LabelInstruction::estimateBinaryLength(int32_t currentEstimate)
                }
             }
          }
-      setEstimatedBinaryLength(getOpCode().length(self()->getEncodingMethod(), self()->rexBits()) + immediateLength);
+      setEstimatedBinaryLength(getOpCode().length(self()->getEncodingMethod(), self()->rexBits(), self()->cg()) + immediateLength);
       }
    else if (getOpCodeValue() == TR::InstOpCode::label)
       {
@@ -643,7 +643,7 @@ int32_t TR::X86LabelInstruction::estimateBinaryLength(int32_t currentEstimate)
       }
    else // assume absolute code reference
       {
-      setEstimatedBinaryLength(getOpCode().length(self()->getEncodingMethod(), self()->rexBits()) + 4); // full offset for absolute address reference
+      setEstimatedBinaryLength(getOpCode().length(self()->getEncodingMethod(), self()->rexBits(), self()->cg()) + 4); // full offset for absolute address reference
       }
    return currentEstimate + getEstimatedBinaryLength();
    }
@@ -977,7 +977,7 @@ uint8_t* TR::X86ImmInstruction::generateOperand(uint8_t* cursor)
 
 uint8_t TR::X86ImmInstruction::getBinaryLengthLowerBound()
    {
-   uint8_t len = getOpCode().length(self()->getEncodingMethod(), self()->rexBits());
+   uint8_t len = getOpCode().length(self()->getEncodingMethod(), self()->rexBits(), self()->cg());
    if (getOpCode().hasIntImmediate())
       len += 4;
    else if (getOpCode().hasByteImmediate() || getOpCode().hasSignExtendImmediate())
@@ -998,7 +998,7 @@ int32_t TR::X86ImmInstruction::estimateBinaryLength(int32_t currentEstimate)
       {
       immediateLength = 2;
       }
-   setEstimatedBinaryLength(getOpCode().length(self()->getEncodingMethod(), self()->rexBits()) + immediateLength);
+   setEstimatedBinaryLength(getOpCode().length(self()->getEncodingMethod(), self()->rexBits(), self()->cg()) + immediateLength);
 
    return currentEstimate + getEstimatedBinaryLength();
    }
@@ -1504,13 +1504,13 @@ uint8_t* TR::X86RegInstruction::generateOperand(uint8_t* cursor)
 uint8_t TR::X86RegInstruction::getBinaryLengthLowerBound()
    {
    TR::InstOpCode  &opCode = getOpCode();
-   return opCode.length(self()->getEncodingMethod(), self()->rexBits());
+   return opCode.length(self()->getEncodingMethod(), self()->rexBits(), self()->cg());
    }
 
 int32_t TR::X86RegInstruction::estimateBinaryLength(int32_t currentEstimate)
    {
    TR::InstOpCode  &opCode = getOpCode();
-   setEstimatedBinaryLength(opCode.length(self()->getEncodingMethod(), self()->rexBits()) + rexRepeatCount());
+   setEstimatedBinaryLength(opCode.length(self()->getEncodingMethod(), self()->rexBits(), self()->cg()) + rexRepeatCount());
    return currentEstimate + getEstimatedBinaryLength();
    }
 
@@ -1692,7 +1692,7 @@ uint8_t* TR::X86RegMaskRegRegImmInstruction::generateOperand(uint8_t* cursor)
 
 uint8_t TR::X86RegMaskRegRegImmInstruction::getBinaryLengthLowerBound()
    {
-   uint8_t len = getOpCode().length(self()->getEncodingMethod(), self()->rexBits());
+   uint8_t len = getOpCode().length(self()->getEncodingMethod(), self()->rexBits(), self()->cg());
 
    if (getOpCode().hasIntImmediate()) len += 4;
    else if (getOpCode().hasShortImmediate()) len += 2;
@@ -1711,7 +1711,7 @@ int32_t TR::X86RegMaskRegRegImmInstruction::estimateBinaryLength(int32_t current
       {
       immediateLength = 2;
       }
-   setEstimatedBinaryLength(getOpCode().length(self()->getEncodingMethod(), self()->rexBits()) + immediateLength);
+   setEstimatedBinaryLength(getOpCode().length(self()->getEncodingMethod(), self()->rexBits(), self()->cg()) + immediateLength);
    return currentEstimate + getEstimatedBinaryLength();
    }
 
@@ -1944,7 +1944,7 @@ uint8_t* TR::X86RegImmInstruction::generateOperand(uint8_t* cursor)
 
 uint8_t TR::X86RegImmInstruction::getBinaryLengthLowerBound()
    {
-   uint8_t len = getOpCode().length(self()->getEncodingMethod(), self()->rexBits());
+   uint8_t len = getOpCode().length(self()->getEncodingMethod(), self()->rexBits(), self()->cg());
 
    if (getOpCode().hasIntImmediate()) len += 4;
    else if (getOpCode().hasShortImmediate()) len += 2;
@@ -1964,7 +1964,7 @@ int32_t TR::X86RegImmInstruction::estimateBinaryLength(int32_t currentEstimate)
       immediateLength = 2;
       }
 
-   setEstimatedBinaryLength(getOpCode().length(self()->getEncodingMethod(), self()->rexBits()) + rexRepeatCount() + immediateLength);
+   setEstimatedBinaryLength(getOpCode().length(self()->getEncodingMethod(), self()->rexBits(), self()->cg()) + rexRepeatCount() + immediateLength);
    return currentEstimate + getEstimatedBinaryLength();
    }
 
@@ -2226,7 +2226,7 @@ uint8_t* TR::X86RegRegImmInstruction::generateOperand(uint8_t* cursor)
 
 uint8_t TR::X86RegRegImmInstruction::getBinaryLengthLowerBound()
    {
-   uint8_t len = getOpCode().length(self()->getEncodingMethod(), self()->rexBits());
+   uint8_t len = getOpCode().length(self()->getEncodingMethod(), self()->rexBits(), self()->cg());
 
    if (getOpCode().hasIntImmediate()) len += 4;
    else if (getOpCode().hasShortImmediate()) len += 2;
@@ -2245,7 +2245,7 @@ int32_t TR::X86RegRegImmInstruction::estimateBinaryLength(int32_t currentEstimat
       {
       immediateLength = 2;
       }
-   setEstimatedBinaryLength(getOpCode().length(self()->getEncodingMethod(), self()->rexBits()) + immediateLength);
+   setEstimatedBinaryLength(getOpCode().length(self()->getEncodingMethod(), self()->rexBits(), self()->cg()) + immediateLength);
    return currentEstimate + getEstimatedBinaryLength();
    }
 
@@ -2277,7 +2277,7 @@ uint8_t TR::X86MemInstruction::getBinaryLengthLowerBound()
    if (barrier & NeedsExplicitBarrier)
       length += getMemoryBarrierBinaryLengthLowerBound(barrier, cg());
 
-   return getOpCode().length(self()->getEncodingMethod(), self()->rexBits()) + length;
+   return getOpCode().length(self()->getEncodingMethod(), self()->rexBits(), self()->cg()) + length;
    }
 
 int32_t TR::X86MemInstruction::estimateBinaryLength(int32_t currentEstimate)
@@ -2294,7 +2294,7 @@ int32_t TR::X86MemInstruction::estimateBinaryLength(int32_t currentEstimate)
 
    int32_t patchBoundaryPadding = (cg()->comp()->target().isSMP() && getMemoryReference()->getSymbolReference().isUnresolved()) ? 1 : 0;
 
-   setEstimatedBinaryLength(getOpCode().length(self()->getEncodingMethod(), self()->rexBits()) + length + patchBoundaryPadding);
+   setEstimatedBinaryLength(getOpCode().length(self()->getEncodingMethod(), self()->rexBits(), self()->cg()) + length + patchBoundaryPadding);
 
    return currentEstimate + getEstimatedBinaryLength();
    }
@@ -2459,7 +2459,7 @@ uint8_t TR::X86MemImmInstruction::getBinaryLengthLowerBound()
    if (barrier & NeedsExplicitBarrier)
       length += getMemoryBarrierBinaryLengthLowerBound(barrier, cg());
 
-   length += getOpCode().length(self()->getEncodingMethod(), self()->rexBits());
+   length += getOpCode().length(self()->getEncodingMethod(), self()->rexBits(), self()->cg());
 
    if (getOpCode().hasIntImmediate())
       length += 4;
@@ -2492,7 +2492,7 @@ int32_t TR::X86MemImmInstruction::estimateBinaryLength(int32_t currentEstimate)
 
    uint32_t patchBoundaryPadding = (cg()->comp()->target().isSMP() && getMemoryReference()->getSymbolReference().isUnresolved()) ? 1 : 0;
 
-   setEstimatedBinaryLength(getOpCode().length(self()->getEncodingMethod(), self()->rexBits()) + length + patchBoundaryPadding);
+   setEstimatedBinaryLength(getOpCode().length(self()->getEncodingMethod(), self()->rexBits(), self()->cg()) + length + patchBoundaryPadding);
 
    return currentEstimate + getEstimatedBinaryLength();
    }
@@ -2753,7 +2753,7 @@ uint8_t TR::X86MemRegImmInstruction::getBinaryLengthLowerBound()
    if (barrier & NeedsExplicitBarrier)
       length += getMemoryBarrierBinaryLengthLowerBound(barrier, cg());
 
-   length += getOpCode().length(self()->getEncodingMethod(), self()->rexBits());
+   length += getOpCode().length(self()->getEncodingMethod(), self()->rexBits(), self()->cg());
    if (getOpCode().hasIntImmediate())
       length += 4;
    else if (getOpCode().hasShortImmediate())
@@ -2785,7 +2785,7 @@ int32_t TR::X86MemRegImmInstruction::estimateBinaryLength(int32_t currentEstimat
 
    int32_t patchBoundaryPadding = (cg()->comp()->target().isSMP() && getMemoryReference()->getSymbolReference().isUnresolved()) ? 1 : 0;
 
-   setEstimatedBinaryLength(getOpCode().length(self()->getEncodingMethod(), self()->rexBits()) + length + patchBoundaryPadding);
+   setEstimatedBinaryLength(getOpCode().length(self()->getEncodingMethod(), self()->rexBits(), self()->cg()) + length + patchBoundaryPadding);
    return currentEstimate + getEstimatedBinaryLength();
    }
 
@@ -2829,7 +2829,7 @@ uint8_t TR::X86RegMemInstruction::getBinaryLengthLowerBound()
    if (barrier & NeedsExplicitBarrier)
       length += getMemoryBarrierBinaryLengthLowerBound(barrier, cg());
 
-   return getOpCode().length(self()->getEncodingMethod(), self()->rexBits()) + length;
+   return getOpCode().length(self()->getEncodingMethod(), self()->rexBits(), self()->cg()) + length;
    }
 
 int32_t TR::X86RegMemInstruction::estimateBinaryLength(int32_t currentEstimate)
@@ -2846,7 +2846,7 @@ int32_t TR::X86RegMemInstruction::estimateBinaryLength(int32_t currentEstimate)
 
    int32_t patchBoundaryPadding = (cg()->comp()->target().isSMP() && getMemoryReference()->getSymbolReference().isUnresolved()) ? 1 : 0;
 
-   setEstimatedBinaryLength(getOpCode().length(self()->getEncodingMethod(), self()->rexBits()) + rexRepeatCount() + length + patchBoundaryPadding);
+   setEstimatedBinaryLength(getOpCode().length(self()->getEncodingMethod(), self()->rexBits(), self()->cg()) + rexRepeatCount() + length + patchBoundaryPadding);
    return currentEstimate + getEstimatedBinaryLength();
    }
 
@@ -2973,7 +2973,7 @@ uint8_t TR::X86RegMemImmInstruction::getBinaryLengthLowerBound()
    if (barrier & NeedsExplicitBarrier)
       length += getMemoryBarrierBinaryLengthLowerBound(barrier, cg());
 
-   length += getOpCode().length(self()->getEncodingMethod(), self()->rexBits());
+   length += getOpCode().length(self()->getEncodingMethod(), self()->rexBits(), self()->cg());
 
    if (getOpCode().hasIntImmediate())
       length += 4;
@@ -3006,7 +3006,7 @@ int32_t TR::X86RegMemImmInstruction::estimateBinaryLength(int32_t currentEstimat
 
    int32_t patchBoundaryPadding = (cg()->comp()->target().isSMP() && getMemoryReference()->getSymbolReference().isUnresolved()) ? 1 : 0;
 
-   setEstimatedBinaryLength(getOpCode().length(self()->getEncodingMethod(), self()->rexBits()) + length + patchBoundaryPadding);
+   setEstimatedBinaryLength(getOpCode().length(self()->getEncodingMethod(), self()->rexBits(), self()->cg()) + length + patchBoundaryPadding);
 
    return currentEstimate + getEstimatedBinaryLength();
    }
@@ -3091,7 +3091,7 @@ uint8_t* TR::X86FPRegMemInstruction::generateOperand(uint8_t* cursor)
 
 uint8_t TR::X86FPRegMemInstruction::getBinaryLengthLowerBound()
    {
-   return getOpCode().length(self()->getEncodingMethod(), self()->rexBits());
+   return getOpCode().length(self()->getEncodingMethod(), self()->rexBits(), self()->cg());
    }
 
 
@@ -3371,13 +3371,13 @@ uint8_t* TR::AMD64RegImm64Instruction::generateOperand(uint8_t* cursor)
 
 uint8_t TR::AMD64RegImm64Instruction::getBinaryLengthLowerBound()
    {
-   return getOpCode().length(self()->getEncodingMethod(), self()->rexBits()) + rexRepeatCount() + 8;
+   return getOpCode().length(self()->getEncodingMethod(), self()->rexBits(), self()->cg()) + rexRepeatCount() + 8;
    }
 
 
 int32_t TR::AMD64RegImm64Instruction::estimateBinaryLength(int32_t currentEstimate)
    {
-   setEstimatedBinaryLength(getOpCode().length(self()->getEncodingMethod(), self()->rexBits()) + 8);
+   setEstimatedBinaryLength(getOpCode().length(self()->getEncodingMethod(), self()->rexBits(), self()->cg()) + 8);
    return currentEstimate + getEstimatedBinaryLength();
    }
 
@@ -3582,13 +3582,13 @@ uint8_t* TR::AMD64Imm64Instruction::generateOperand(uint8_t* cursor)
 
 uint8_t TR::AMD64Imm64Instruction::getBinaryLengthLowerBound()
    {
-   uint8_t len = getOpCode().length(self()->getEncodingMethod(), self()->rexBits()) + 8;
+   uint8_t len = getOpCode().length(self()->getEncodingMethod(), self()->rexBits(), self()->cg()) + 8;
    return len;
    }
 
 int32_t TR::AMD64Imm64Instruction::estimateBinaryLength(int32_t currentEstimate)
    {
-   setEstimatedBinaryLength(getOpCode().length(self()->getEncodingMethod(), self()->rexBits()) + 8);
+   setEstimatedBinaryLength(getOpCode().length(self()->getEncodingMethod(), self()->rexBits(), self()->cg()) + 8);
    return currentEstimate + getEstimatedBinaryLength();
    }
 
