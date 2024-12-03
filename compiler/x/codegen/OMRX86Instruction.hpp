@@ -3506,7 +3506,125 @@ generateImm64SymInstruction(TR::Instruction                      *precedingInstr
                             TR::RegisterDependencyConditions  *cond,
                             TR::CodeGenerator                    *cg);
 
+/**
+ * @brief Generates a loop with parameterized unrolling and optional residue element processing.
+ *
+ * This function generates an optimized loop with a specified unrolling factor and the ability to process
+ * multiple elements per iteration. If the total number of iterations is not divisible by the number of
+ * elements processed in each unrolled iteration, a secondary residue loop can be generated to handle
+ * the leftover elements.
+ *
+ * Constraints:
+ * - `unrollFactor` must be a power of 2.
+ * - `elementsPerIteration` must be a power of 2.
+ * - `residueGenBodyFunction` If specified, must only process one iteration of loop index.
+ *
+ * @param unrollFactor Number of iterations to unroll in the main loop.
+ * @param elementsPerIteration Number of elements processed per loop body iteration.
+ * @param indexReg The register used to store the loop index.
+ * @param maxIndexReg The register containing the loop bound.
+ * @param node IL node associated with the loop generation.
+ * @param cg Pointer to the code generator responsible for emitting the loop code.
+ * @param loopInitializerFunction Function to generate initialization code prior to the first iteration, if applicable.
+ * @param genBodyFunction Function to generate the body of the loop for each unrolled iteration.
+ * @param residueGenBodyFunction Function to generate the body for the residue loop, if applicable.
+ */
+void generateLoop(int32_t unrollFactor,
+                  int32_t elementsPerIteration,
+                  TR::Register *indexReg,
+                  TR::Register *maxIndexReg,
+                  TR::Node *node,
+                  TR::CodeGenerator *cg,
+                  std::function<void()> loopInitializerFunction,
+                  std::function<void(int32_t)> genBodyFunction,
+                  std::function<void(int32_t)> residueGenBodyFunction = NULL);
 
+/**
+ * @brief Generates a loop with parameterized unrolling and optional residue element processing.
+ *
+ * This function generates an optimized loop with a specified unrolling factor and the ability to process
+ * multiple elements per iteration. If the total number of iterations is not divisible by the number of
+ * elements processed in each unrolled iteration, a secondary residue loop can be generated to handle
+ * the leftover elements.
+ *
+ * Constraints:
+ * - `unrollFactor` must be a power of 2.
+ * - `elementsPerIteration` must be a power of 2.
+ * - `residueGenBodyFunction` If specified, must only process one iteration of loop index.
+ *
+ * @param unrollFactor Number of iterations to unroll in the main loop.
+ * @param elementsPerIteration Number of elements processed per loop body iteration.
+ * @param indexReg The register used to store the loop index.
+ * @param maxIndexReg The register containing the loop bound.
+ * @param node IL node associated with the loop generation.
+ * @param cg Pointer to the code generator responsible for emitting the loop code.
+ * @param genBodyFunction Function to generate the body of the loop for each unrolled iteration.
+ * @param residueGenBodyFunction Function to generate the body for the residue loop, if applicable.
+ */
+void generateLoop(int32_t unrollFactor,
+                  int32_t elementsPerIteration,
+                  TR::Register *indexReg,
+                  TR::Register *maxIndexReg,
+                  TR::Node *node,
+                  TR::CodeGenerator *cg,
+                  std::function<void(int32_t)> genBodyFunction,
+                  std::function<void(int32_t)> residueGenBodyFunction = NULL)
+   {
+   generateLoop(unrollFactor, elementsPerIteration, indexReg, maxIndexReg, node, cg, NULL, genBodyFunction, genBodyFunction);
+   }
+
+/**
+ * @brief Generates a loop with parameterized unrolling and residue processing.
+ *
+ * This function generates an unrolled loop where each unrolled iteration
+ * processes only one element. A second loop is automatically generated to
+ * process leftover (residue) elements, ensuring all elements are handled.
+ *
+ * Constraints:
+ * - `unrollFactor` must be a power of 2.
+ * - `genBodyFunction` must only process one iteration of loop index.
+ *
+ * @param unrollFactor Number of iterations to unroll in the main loop.
+ * @param indexReg The register used to store the loop index.
+ * @param maxIndexReg The register containing the loop bound.
+ * @param node IL node associated with the loop generation.
+ * @param cg Pointer to the code generator responsible for emitting the loop code.
+ * @param genBodyFunction Function to generate the body of the loop for each unrolled iteration.
+ */
+inline void generateUnrolledLoopWithResidue(int32_t unrollFactor,
+                                            TR::Register *indexReg,
+                                            TR::Register *maxIndexReg,
+                                            TR::Node *node,
+                                            TR::CodeGenerator *cg,
+                                            std::function<void(int32_t)> genBodyFunction)
+   {
+   generateLoop(unrollFactor, 1, indexReg, maxIndexReg, node, cg, NULL, genBodyFunction, genBodyFunction);
+   }
+
+/**
+ * @brief Generates a simple loop without unrolling or residue processing.
+ *
+ * This function generates a loop where each iteration processes a single element.
+ * It is suitable for scenarios where the loop body function processes exactly one
+ * loop index per iteration. No additional residue handling is required.
+ *
+ * Constraints:
+ * - `genBodyFunction` must only process one iteration of loop index.
+ *
+ * @param indexReg The register used to store the loop index.
+ * @param loopBoundReg The register containing the loop bound.
+ * @param node IL node associated with the loop generation.
+ * @param cg Pointer to the code generator responsible for emitting the loop code.
+ * @param genBodyFunction Function to generate the body of the loop for each iteration.
+ */
+inline void generateLoop(TR::Register *indexReg,
+                         TR::Register *maxIndexReg,
+                         TR::Node *node,
+                         TR::CodeGenerator *cg,
+                         std::function<void(int32_t)> genBodyFunction)
+   {
+   generateLoop(1, 1, indexReg, maxIndexReg, node, cg, NULL, genBodyFunction, NULL);
+   }
 
 namespace TR { typedef TR::Instruction X86FPReturnInstruction; }
 namespace TR { typedef TR::X86ImmInstruction X86FPReturnImmInstruction; }
