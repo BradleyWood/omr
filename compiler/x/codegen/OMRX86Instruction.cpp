@@ -23,6 +23,8 @@
 
 #include <stddef.h>
 #include <stdint.h>
+
+#include <utility>
 #include "codegen/CodeGenerator.hpp"
 #include "codegen/Instruction.hpp"
 #include "codegen/Machine.hpp"
@@ -5311,12 +5313,10 @@ void generateLoop(int32_t unrollFactor,
                   std::function<void(int32_t)> genBodyFunction,
                   std::function<void(int32_t)> residueGenBodyFunction)
    {
-   TR_ASSERT_FATAL(residueGenBodyFunction == NULL || elementsPerIteration == 1,
-                   "Residue processing is invalid when elementsPerIteration > 1 without custom residueGenBodyFunction");
    TR_ASSERT_FATAL((unrollFactor > 0) && ((unrollFactor & (unrollFactor - 1)) == 0), "Unroll count must be power of 2");
    TR_ASSERT_FATAL(elementsPerIteration == 1 || (elementsPerIteration > 0) && ((elementsPerIteration & (elementsPerIteration - 1)) == 0),
                    "elementsPerIteration must be 1 or a power of 2");
-   TR_ASSERT_FATAL(unrollFactor <= 16, "Excessive unrolling detected (unrollFactor > 16)");
+//   TR_ASSERT_FATAL(unrollFactor <= 16, "Excessive unrolling detected (unrollFactor > 16)");
 
    TR::RegisterDependencyConditions *deps = generateRegisterDependencyConditions(0, 1, cg);
    TR::Register *loopLimitReg = cg->allocateRegister();
@@ -5379,12 +5379,35 @@ void generateLoop(int32_t unrollFactor,
    if (residueGenBodyFunction != NULL && numElements > 1)
       {
       TR_ASSERT_FATAL(residueGenBodyFunction, "Missing function to generate residue");
-      TR_ASSERT_FATAL((genBodyFunction.target<void(*)(int32_t)>() != residueGenBodyFunction.target<void(*)(int32_t)>()) || (elementsPerIteration == 1),
-                      "Cannot use same function for residue generation if it processes more than one index per iteration");
 
       // Generate a second loop to process residual iterations
-      generateLoop(1, 1, indexReg, maxIndexReg, node, cg, residueGenBodyFunction, NULL);
+      generateLoop(1, 1, indexReg, maxIndexReg, node, cg, loopInitializerFunction, residueGenBodyFunction, NULL);
       }
+   }
+
+void generateLoop(int32_t begin,
+                  int32_t end,
+                  TR::Node *node,
+                  TR::CodeGenerator *cg,
+                  std::function<void(int32_t)> genBodyFunction)
+   {
+   TR::RegisterDependencyConditions *deps = generateRegisterDependencyConditions(0, 2, cg);
+
+   TR::Register *indexReg = cg->allocateRegister();
+   TR::Register *loopBoundReg = cg->allocateRegister();
+   TR::LabelSymbol *label = generateLabelSymbol(cg);
+
+   deps->addPostCondition(indexReg, TR::RealRegister::NoReg, cg);
+   deps->addPostCondition(loopBoundReg, TR::RealRegister::NoReg, cg);
+
+   TR::TreeEvaluator::loadConstant(node, begin, TR_RematerializableInt, cg, indexReg);
+   TR::TreeEvaluator::loadConstant(node, end, TR_RematerializableInt, cg, loopBoundReg);
+
+   generateLoop(indexReg, loopBoundReg, node, cg, std::move(genBodyFunction));
+   generateLabelInstruction(TR::InstOpCode::label, node, label, deps, cg);
+
+   cg->stopUsingRegister(indexReg);
+   cg->stopUsingRegister(loopBoundReg);
    }
 
 void

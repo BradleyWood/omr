@@ -111,6 +111,70 @@ protected:
     TR::Optimizer* _optimizer;
 };
 
+class IReturnCompilerUnitTest : public ::testing::Test {
+public:
+    IReturnCompilerUnitTest() :
+            _jitInit(),
+            _rawAllocator(),
+            _segmentProvider(1 << 16, _rawAllocator),
+            _dispatchRegion(_segmentProvider, _rawAllocator),
+            _trMemory(*OMR::FrontEnd::singleton().persistentMemory(), _dispatchRegion),
+            _types(),
+            _options(),
+            _ilGenRequest(),
+            _method("compunittest", "0", "test", 0, NULL, _types.Int16, NULL, NULL),
+            _comp(0, NULL, &OMR::FrontEnd::singleton(), &_method, _ilGenRequest, _options, _dispatchRegion, &_trMemory, TR_OptimizationPlan::alloc(warm)) {
+        _symbol = TR::ResolvedMethodSymbol::create(_comp.trStackMemory(), &_method, &_comp);
+        TR::CFG* cfg =  new (region()) TR::CFG(&_comp, _symbol, region());
+        _symbol->setFlowGraph(cfg);
+        _optimizer = new (region()) TR::Optimizer(&_comp, _symbol, false);
+        _comp.setOptimizer(_optimizer);
+    }
+
+    void init(TR::Register *(*funcBodyGG)(TR::Node*, TR::CodeGenerator*)) {
+        TR::Node *a = TR::Node::create(TR::BBEnd);
+        TR::Node *b = TR::Node::create(TR::BBEnd);
+
+        TR::TreeTop *ttBBStart = TR::TreeTop::create(&_comp, a);
+        TR::TreeTop *ttBBEnd= TR::TreeTop::create(&_comp, b);
+        ttBBEnd->setNextTreeTop(ttBBEnd);
+
+        _fakeNode = TR::Node::create(NULL, TR::ifake);
+
+        int64_t addr = (int64_t) funcBodyGG;
+
+        _fakeNode->setLongInt(addr);
+
+        TR::TreeTop *tt = TR::TreeTop::create(&_comp, TR::Node::create(TR::ireturn, 1, _fakeNode));
+
+        TR::Block *block = new (region()) TR::Block(&_trMemory);
+        block->setEntry(ttBBStart);
+        block->setEntry(ttBBEnd);
+
+        ttBBStart->insertAfter(tt);
+
+        _comp.cg()->setCurrentBlock(block);
+        _symbol->setFirstTreeTop(tt);
+    }
+
+    TR::Region& region() { return _dispatchRegion; }
+
+protected:
+    JitInitializer _jitInit;
+    TR::RawAllocator _rawAllocator;
+    TR::SystemSegmentProvider _segmentProvider;
+    TR::Region _dispatchRegion;
+    TR_Memory _trMemory;
+    TR::TypeDictionary _types;
+    TR::Options _options;
+    NullIlGenRequest _ilGenRequest;
+    TR::ResolvedMethodSymbol* _symbol;
+    TR::ResolvedMethod _method;
+    TR::Compilation _comp;
+    TR::Optimizer* _optimizer;
+    TR::Node *_fakeNode;
+};
+
 template <typename T>
 class MakeVector {
     std::vector<T> _vals;

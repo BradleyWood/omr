@@ -52,6 +52,22 @@ OPCODE_MACRO(\
    /* .description          =    load integer constant (32-bit signed 2's complement) */ \
 )
 OPCODE_MACRO(\
+   /* .opcode               = */ ifake, \
+   /* .name                 = */ "ifake", \
+   /* .properties1          = */ ILProp1::LoadConst, \
+   /* .properties2          = */ ILProp2::ValueNumberShare, \
+   /* .properties3          = */ ILProp3::LikeUse, \
+   /* .properties4          = */ 0, \
+   /* .dataType             = */ TR::Int32, \
+   /* .typeProperties       = */ ILTypeProp::Size_8 | ILTypeProp::Integer, \
+   /* .childProperties      = */ ILChildProp::NoChildren, \
+   /* .swapChildrenOpCode   = */ TR::BadILOp, \
+   /* .reverseBranchOpCode  = */ TR::BadILOp, \
+   /* .booleanCompareOpCode = */ TR::BadILOp, \
+   /* .ifCompareOpCode      = */ TR::BadILOp, \
+   /* .description          =    load long integer constant (64-bit signed 2's complement) */ \
+)
+OPCODE_MACRO(\
    /* .opcode               = */ lconst, \
    /* .name                 = */ "lconst", \
    /* .properties1          = */ ILProp1::LoadConst, \

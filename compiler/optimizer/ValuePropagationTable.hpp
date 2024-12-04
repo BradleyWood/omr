@@ -168,6 +168,7 @@ TR::Node * constrainLongBitCount(OMR::ValuePropagation *vp, TR::Node *node);
 #define BadILOpVPHandler constrainChildren
 #define aconstVPHandler constrainAConst
 #define iconstVPHandler constrainIntConst
+#define ifakeVPHandler constrainIntConst
 #define lconstVPHandler constrainLongConst
 #define fconstVPHandler constrainFloatConst
 #define dconstVPHandler constrainLongConst

@@ -3561,16 +3561,16 @@ void generateLoop(int32_t unrollFactor,
  * @param genBodyFunction Function to generate the body of the loop for each unrolled iteration.
  * @param residueGenBodyFunction Function to generate the body for the residue loop, if applicable.
  */
-void generateLoop(int32_t unrollFactor,
-                  int32_t elementsPerIteration,
-                  TR::Register *indexReg,
-                  TR::Register *maxIndexReg,
-                  TR::Node *node,
-                  TR::CodeGenerator *cg,
-                  std::function<void(int32_t)> genBodyFunction,
-                  std::function<void(int32_t)> residueGenBodyFunction = NULL)
+inline void generateLoop(int32_t unrollFactor,
+                         int32_t elementsPerIteration,
+                         TR::Register *indexReg,
+                         TR::Register *maxIndexReg,
+                         TR::Node *node,
+                         TR::CodeGenerator *cg,
+                         std::function<void(int32_t)> genBodyFunction,
+                         std::function<void(int32_t)> residueGenBodyFunction = NULL)
    {
-   generateLoop(unrollFactor, elementsPerIteration, indexReg, maxIndexReg, node, cg, NULL, genBodyFunction, genBodyFunction);
+   generateLoop(unrollFactor, elementsPerIteration, indexReg, maxIndexReg, node, cg, NULL, genBodyFunction, residueGenBodyFunction);
    }
 
 /**
@@ -3625,6 +3625,12 @@ inline void generateLoop(TR::Register *indexReg,
    {
    generateLoop(1, 1, indexReg, maxIndexReg, node, cg, NULL, genBodyFunction, NULL);
    }
+
+void generateLoop(int32_t begin,
+                  int32_t end,
+                  TR::Node *node,
+                  TR::CodeGenerator *cg,
+                  std::function<void(int32_t)> genBodyFunction);
 
 namespace TR { typedef TR::Instruction X86FPReturnInstruction; }
 namespace TR { typedef TR::X86ImmInstruction X86FPReturnImmInstruction; }

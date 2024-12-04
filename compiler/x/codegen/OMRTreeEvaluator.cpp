@@ -4430,6 +4430,13 @@ TR::Register *OMR::X86::TreeEvaluator::aRegLoadEvaluator(TR::Node *node, TR::Cod
    return globalReg;
    }
 
+TR::Register *OMR::X86::TreeEvaluator::ifakeEvaluator(TR::Node *node, TR::CodeGenerator *cg)
+   {
+   int64_t addr = node->getLongInt();
+   auto func = reinterpret_cast<TR::Register* (*)(TR::Node*, TR::CodeGenerator*)>(addr);
+   return func(node, cg);
+   }
+
 TR::Register *OMR::X86::TreeEvaluator::integerRegLoadEvaluator(TR::Node *node, TR::CodeGenerator *cg)
    {
    TR::Register *globalReg = node->getRegister();

@@ -25,6 +25,7 @@
 #define BadILOpSimplifierHandler dftSimplifier
 #define aconstSimplifierHandler dftSimplifier
 #define iconstSimplifierHandler constSimplifier
+#define ifakeSimplifierHandler constSimplifier
 #define lconstSimplifierHandler lconstSimplifier
 #define fconstSimplifierHandler dftSimplifier
 #define dconstSimplifierHandler dftSimplifier

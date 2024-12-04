@@ -122,6 +122,38 @@ class BinaryEncoderTest : public TRTest::CodeGenTest {
     }
 };
 
+class IReturnCodeGenTest : public TRTest::IReturnCompilerUnitTest {
+
+public:
+    IReturnCodeGenTest() : IReturnCompilerUnitTest() {
+//       fakeNode = TR::Node::create(TR::ireturn);
+    }
+
+    void *compile(TR::Register *(*body)(TR::Node*, TR::CodeGenerator*)) {
+        static bool debug = feGetEnv("TR_DEBUG_TEST") != NULL;
+
+        if (debug) {
+            _comp.setOption(TR_TraceAll);
+            _comp.findOrCreateDebug();
+            TR::FILE *jitdumpFile = trfopen("fvtest2.log", "ab", false);
+            _comp.setOutFile(jitdumpFile);
+        }
+
+        init(body);
+        cg()->generateCode();
+
+        if (debug) {
+            trfflush(_comp.getOutFile());
+        }
+
+        return _comp.getMethodSymbol()->getMethodAddress();
+    }
+
+
+    TR::CodeGenerator* cg() { return _comp.cg(); }
+};
+
+
 std::ostream& operator<<(std::ostream& os, const BinaryInstruction& instr);
 
 }

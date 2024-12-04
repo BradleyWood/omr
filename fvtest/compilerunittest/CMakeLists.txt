@@ -45,6 +45,7 @@ endif()
 if(OMR_ARCH_X86)
 	list(APPEND COMPCGTEST_FILES
 		x/BinaryEncoder.cpp
+		x/XCodeGenTest.cpp
 	)
 endif()
 
