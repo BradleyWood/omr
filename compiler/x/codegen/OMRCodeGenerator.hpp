@@ -663,6 +663,26 @@ class OMR_EXTENSIBLE CodeGenerator : public OMR::CodeGenerator
 
    uint32_t getOutOfLineCodeSize();
 
+   void allocateWithPostCondition(TR::Register *&regA, TR_RegisterKinds rk, TR::RegisterDependencyConditions *deps, TR::RealRegister::RegNum regNum = TR::RealRegister::NoReg);
+
+   void allocateRegsWithPostConditions(TR::Register *&regA, TR::Register *&regB, TR_RegisterKinds rk, TR::RegisterDependencyConditions *deps)
+      {
+      allocateWithPostCondition(regA, rk, deps, TR::RealRegister::NoReg);
+      allocateWithPostCondition(regB, rk, deps, TR::RealRegister::NoReg);
+      }
+
+   void allocateRegsWithPostConditions(TR::Register *&regA, TR::Register *&regB, TR::Register *&regC, TR_RegisterKinds rk, TR::RegisterDependencyConditions *deps)
+      {
+      allocateRegsWithPostConditions(regA, regB, rk, deps);
+      allocateWithPostCondition(regC, rk, deps);
+      }
+
+   void allocateRegsWithPostConditions(TR::Register *&regA, TR::Register *&regB, TR::Register *&regC, TR::Register *&regD, TR_RegisterKinds rk, TR::RegisterDependencyConditions *deps)
+      {
+      allocateRegsWithPostConditions(regA, regB, regC, rk, deps);
+      allocateWithPostCondition(regD, rk, deps);
+      }
+
    /*
     * \brief create a data snippet.
     *

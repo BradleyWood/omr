@@ -1391,6 +1391,15 @@ OMR::X86::CodeGenerator::findBetterSpillPlacement(
    return placement;
    }
 
+void
+OMR::X86::CodeGenerator::allocateWithPostCondition(TR::Register *&reg1, TR_RegisterKinds rk, TR::RegisterDependencyConditions *deps, TR::RealRegister::RegNum regNum)
+   {
+   TR_ASSERT_FATAL(deps != NULL, "Dependency conditions must not be null");
+   TR::Register *firstReg = allocateRegister(rk);
+
+   deps->addPostCondition(firstReg, regNum, self());
+   reg1 = firstReg;
+   }
 
 void
 OMR::X86::CodeGenerator::performNonLinearRegisterAssignmentAtBranch(
