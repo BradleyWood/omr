@@ -32,6 +32,7 @@
       InstructionSelectionPhase,
       CreateStackAtlasPhase,
       RegisterAssigningPhase,
+      CodeGenOptPhase,
       MapStackPhase,
       PeepholePhase,
       BinaryEncodingPhase,

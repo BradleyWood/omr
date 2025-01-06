@@ -1396,6 +1396,11 @@ public:
    void freeUnlatchedRegisters();
 
    // --------------------------------------------------------------------------
+   // CodeGen Optimization Phase
+   //
+   void performCodeGenOpts() {}
+
+   // --------------------------------------------------------------------------
    // Listing
    //
    uint32_t _indentation;

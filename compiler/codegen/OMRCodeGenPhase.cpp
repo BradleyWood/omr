@@ -401,8 +401,23 @@ OMR::CodeGenPhase::performRegisterAssigningPhase(TR::CodeGenerator * cg, TR::Cod
       comp->getDebug()->dumpMethodInstrs(comp->getOutFile(), "Post Register Assignment Instructions", false, true);
    }
 
+void
+OMR::CodeGenPhase::performCodeGenOpts(TR::CodeGenerator * cg, TR::CodeGenPhase * phase)
+   {
+   TR::Compilation* comp = cg->comp();
+   phase->reportPhase(CodeGenOptPhase);
 
+   if (cg->getDebug())
+      cg->getDebug()->roundAddressEnumerationCounters();
 
+   TR::LexicalMemProfiler mp("CG_Opt", comp->phaseMemProfiler());
+   LexicalTimer pt("CG_Opt", comp->phaseTimer());
+
+   cg->performCodeGenOpts();
+
+   if (comp->getOption(TR_TraceCG))
+      comp->getDebug()->dumpMethodInstrs(comp->getOutFile(), "Post Register Assignment Instructions", false, true);
+   }
 
 
 void
@@ -613,6 +628,8 @@ OMR::CodeGenPhase::getName(PhaseValue phase)
          return "CreateStackAtlas";
       case RegisterAssigningPhase:
          return "RegisterAssigning";
+      case CodeGenOptPhase:
+         return "CodeGenOptPhase";
       case MapStackPhase:
          return "MapStack";
       case PeepholePhase:

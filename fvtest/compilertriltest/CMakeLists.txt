@@ -57,6 +57,7 @@ omr_add_executable(comptest NOWARNINGS
 	SelectTest.cpp
 	MinimalTest.cpp
 	ArrayTest.cpp
+	IntegerDecomposer.cpp
 )
 
 target_link_libraries(comptest

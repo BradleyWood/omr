@@ -97,6 +97,7 @@
 #include "x/codegen/OutlinedInstructions.hpp"
 #include "x/codegen/FPTreeEvaluator.hpp"
 #include "x/codegen/X86Instruction.hpp"
+#include "x/codegen/X86InstructionScheduler.hpp"
 #include "codegen/InstOpCode.hpp"
 
 // Amount to be added to the estimated code size to ensure that there are long
@@ -1581,6 +1582,17 @@ void OMR::X86::CodeGenerator::processClobberingInstructions(TR::ClobberingInstru
          clobInstructionCursor = *_clobIterator;
          }
       }
+   }
+
+void OMR::X86::CodeGenerator::performCodeGenOpts()
+   {
+   if (self()->comp()->getOption(TR_TraceCG))
+      {
+      traceMsg(self()->comp(), "Performing Code Generation Optimization Phase\n");
+      }
+
+   OMR::X86::X86InstructionScheduler scheduler;
+   scheduler.perform(self());
    }
 
 TR::Instruction *OMR::X86::CodeGenerator::generateInterpreterEntryInstruction(TR::Instruction *procEntryInstruction)

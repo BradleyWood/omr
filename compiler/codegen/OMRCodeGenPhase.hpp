@@ -87,6 +87,7 @@ class OMR_EXTENSIBLE CodeGenPhase
    static void performInstructionSelectionPhase(TR::CodeGenerator * cg, TR::CodeGenPhase *);
    static void performCreateStackAtlasPhase(TR::CodeGenerator * cg, TR::CodeGenPhase *);
    static void performRegisterAssigningPhase(TR::CodeGenerator * cg, TR::CodeGenPhase *);
+   static void performCodeGenOpts(TR::CodeGenerator * cg, TR::CodeGenPhase *);
    static void performMapStackPhase(TR::CodeGenerator * cg, TR::CodeGenPhase *);
    static void performPeepholePhase(TR::CodeGenerator * cg, TR::CodeGenPhase *);
    static void performBinaryEncodingPhase(TR::CodeGenerator * cg, TR::CodeGenPhase *);

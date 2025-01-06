@@ -32,6 +32,7 @@
    TR::CodeGenPhase::performInstructionSelectionPhase,                                       //InstructionSelectionPhase
    TR::CodeGenPhase::performCreateStackAtlasPhase,                                           //CreateStackAtlasPhase
    TR::CodeGenPhase::performRegisterAssigningPhase,                                          //RegisterAssigningPhase
+   TR::CodeGenPhase::performCodeGenOpts,                                                     //CodeGenOptPhase
    TR::CodeGenPhase::performMapStackPhase,                                                   //MapStackPhase
    TR::CodeGenPhase::performPeepholePhase,                                                   //PeepholePhase
    TR::CodeGenPhase::performBinaryEncodingPhase,                                             //BinaryEncodingPhase
