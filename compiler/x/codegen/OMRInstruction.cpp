@@ -68,7 +68,7 @@ OMR::X86::Instruction::Instruction(TR::CodeGenerator *cg, TR::Instruction *prece
 void
 OMR::X86::Instruction::initialize(TR::CodeGenerator *cg, TR::RegisterDependencyConditions *cond, TR::InstOpCode::Mnemonic op, bool flag)
    {
-   self()->assumeValidInstruction();
+//   self()->assumeValidInstruction();
    self()->clobberRegsForRematerialisation();
 
    if (cond && op != TR::InstOpCode::assocreg)
@@ -83,10 +83,10 @@ OMR::X86::Instruction::initialize(TR::CodeGenerator *cg, TR::RegisterDependencyC
    }
 
 
-void OMR::X86::Instruction::assumeValidInstruction()
-   {
-   TR_ASSERT(!(self()->cg()->comp()->target().is64Bit() && self()->getOpCode().isIA32Only()), "Cannot use invalid AMD64 instructions");
-   }
+//void OMR::X86::Instruction::assumeValidInstruction()
+//   {
+//   TR_ASSERT(!(self()->cg()->comp()->target().is64Bit() && self()->getOpCode().isIA32Only()), "Cannot use invalid AMD64 instructions");
+//   }
 
 bool OMR::X86::Instruction::isRegRegMove()
    {

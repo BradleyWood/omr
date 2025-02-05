@@ -70,6 +70,10 @@ namespace TR { class Register; }
 #define IA32OpProp_IntTarget                    0x00400000
 #define IA32OpProp_TestsParityFlag              0x00800000
 #define IA32OpProp_ModifiesParityFlag           0x01000000
+
+#define IA32OpProp1_Scalar2Vector               0x02000000
+#define IA32OpProp1_Vector2Scalar               0x02000000
+
 #define IA32OpProp_TargetRegisterInOpcode       0x04000000
 #define IA32OpProp_TargetRegisterInModRM        0x08000000
 #define IA32OpProp_TargetRegisterIgnored        0x10000000
@@ -101,21 +105,34 @@ namespace TR { class Register; }
 #define IA32OpProp1_PseudoOp                  0x00001000
 #define IA32OpProp1_NeedsRepPrefix            0x00002000
 #define IA32OpProp1_NeedsLockPrefix           0x00004000
-#define IA32OpProp1_CallOp                    0x00010000
-#define IA32OpProp1_SourceIsMemRef            0x00020000
+#define IA32OpProp1_CallOp                    0x00008000
+#define IA32OpProp1_SourceIsMemRef            0x00010000
 
 // For cases when source operand can be a register or mem-ref
-#define IA32OpProp1_SourceCanBeMemRef         0x00020000
-#define IA32OpProp1_SourceRegIsImplicit       0x00040000
-#define IA32OpProp1_TargetRegIsImplicit       0x00080000
-#define IA32OpProp1_FusableCompare            0x00100000
-#define IA32OpProp1_VectorIntMask             0x00200000
-#define IA32OpProp1_ZMMTarget                 0x00400000
-// Available                                  0x00800000
-#define IA32OpProp1_YMMSource                 0x01000000
-#define IA32OpProp1_YMMTarget                 0x02000000
-#define IA32OpProp1_ZMMSource                 0x04000000
-#define IA32OpProp1_VectorLongMask            0x10000000
+#define IA32OpProp1_SourceCanBeMemRef         0x00010000
+#define IA32OpProp1_SourceRegIsImplicit       0x00020000
+#define IA32OpProp1_TargetRegIsImplicit       0x00040000
+#define IA32OpProp1_FusableCompare            0x00080000
+#define IA32OpProp1_ZMMTarget                 0x00100000
+#define IA32OpProp1_YMMSource                 0x00200000
+#define IA32OpProp1_YMMTarget                 0x00400000
+#define IA32OpProp1_ZMMSource                 0x00800000
+
+// Flags used in conjunction with VEX/EVEX L bit to determine size of memory operands
+// If V2V / S2V / V2S Flags are not provided, CG will never shorten EVEX displacement
+#define IA32OpProp1_Vector2Vector             0x01000000
+
+#define IA32OpProp1_SIMDNarrowing             0x02000000
+
+//      IA32OpProp1_V2V_RATIO_1x              Pseudo-flag
+#define IA32OpProp1_V2V_RATIO_2x              0x04000000
+#define IA32OpProp1_V2V_RATIO_4x              0x08000000
+#define IA32OpProp1_V2V_RATIO_8x              0x10000000
+
+//      IA32OpProp1_S2V_i8                    Pseudo-flag
+#define IA32OpProp1_S2V_i16                   IA32OpProp1_V2V_RATIO_2x
+#define IA32OpProp1_S2V_i32                   IA32OpProp1_V2V_RATIO_4x
+#define IA32OpProp1_S2V_i64                   IA32OpProp1_V2V_RATIO_8x
 
 ////////////////////
 //
@@ -326,6 +343,10 @@ class InstOpCode: public OMR::InstOpCode
          {
          return vex_l != VEX_L___;
          }
+      inline bool isVex256() const
+         {
+           return vex_l == VEX_L256;
+         }
       inline bool isEvex() const
          {
          return vex_l >= EVEX_L128;
@@ -501,6 +522,66 @@ class InstOpCode: public OMR::InstOpCode
    inline uint32_t isFusableCompare()              const { return _properties1[_mnemonic] & IA32OpProp1_FusableCompare; }
    inline bool     isEvexInstruction()             const { return _binaries[_mnemonic].vex_l >> 2 == 1; }
    inline uint32_t getInstructionFeatureHints()    const { return _features[_mnemonic]; }
+   inline uint32_t isVector2Vector()               const { return _properties1[_mnemonic] & IA32OpProp1_Vector2Vector; }
+   inline uint32_t isScalar2Vector()               const { return _properties[_mnemonic] & IA32OpProp1_Scalar2Vector; }
+   inline uint32_t isSIMDNarrowing()               const { return _properties1[_mnemonic] & IA32OpProp1_SIMDNarrowing; }
+   inline uint32_t canShortenEVEXDisplacement()     const { return isVector2Vector() || isScalar2Vector(); }
+
+   int32_t getSIMDMemOperandSize(OMR::X86::Encoding encoding)
+      {
+      if (canShortenEVEXDisplacement())
+         {
+         int32_t vectorSize = 16;
+         int32_t ratio = 1;
+
+         if (info().isEvex256() || info().isVex256())
+            {
+            vectorSize = 32;
+            }
+
+         if (info().isEvex512())
+            {
+            vectorSize = 64;
+            }
+
+         switch (encoding)
+            {
+            case OMR::X86::VEX_L256:
+            case OMR::X86::EVEX_L256:
+               vectorSize = 32;
+               break;
+            case OMR::X86::EVEX_L512:
+               vectorSize = 64;
+               break;
+            default:
+               break;
+            }
+
+            if (_properties1[_mnemonic] & IA32OpProp1_V2V_RATIO_2x)
+               ratio = 2;
+            if (_properties1[_mnemonic] & IA32OpProp1_V2V_RATIO_4x)
+               ratio = 4;
+            if (_properties1[_mnemonic] & IA32OpProp1_V2V_RATIO_8x)
+               ratio = 8;
+
+            if (isScalar2Vector())
+               return ratio;
+
+            if (isSIMDNarrowing())
+               {
+               // We are narrowing source operand down to the size of vectorSize
+               return vectorSize * ratio;
+               }
+            else
+               {
+               // We are extending source operand up to the size of vectorSize
+               return vectorSize / ratio;
+               }
+         }
+
+      TR_ASSERT_FATAL(false, "Cannot narrow EVEX displacement without v2v / s2v / v2s flags");
+      return 0;
+      }
 
    OMR::X86::Encoding getSIMDEncoding(TR::CPU *target, TR::VectorLength vl)
       {
