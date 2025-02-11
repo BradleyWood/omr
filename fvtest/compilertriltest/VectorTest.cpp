@@ -754,6 +754,36 @@ TEST_F(VectorTest, VInt8Not) {
     }
 }
 
+TEST_F(VectorTest, AVX_TEST) {
+
+   //TODO: Re-enable this test on S390 after issue #1843 is resolved.
+   SKIP_ON_S390(KnownBug) << "This test is currently disabled on Z platforms because not all Z platforms have vector support (issue #1843)";
+   SKIP_ON_S390X(KnownBug) << "This test is currently disabled on Z platforms because not all Z platforms have vector support (issue #1843)";
+   SKIP_ON_RISCV(MissingImplementation);
+
+   TR::CPU cpu = TR::CPU::detect(privateOmrPortLibrary);
+
+   if (cpu.supportsFeature(OMR_FEATURE_X86_SSE4_2))
+      {
+      printf("SUPPORTS SSE 4.2\n");
+      }
+
+   if (cpu.supportsFeature(OMR_FEATURE_X86_AVX))
+      {
+      printf("SUPPORTS AVX\n");
+      }
+
+   if (cpu.supportsFeature(OMR_FEATURE_X86_AVX2))
+      {
+      printf("SUPPORTS AVX2\n");
+      }
+
+   if (cpu.supportsFeature(OMR_FEATURE_X86_AVX512F))
+      {
+      printf("SUPPORTS AVX512\n");
+      }
+   }
+
 TEST_F(VectorTest, VInt8BitSelect) {
 
    auto inputTrees = "(method return= NoType args=[Address,Address,Address,Address]   "

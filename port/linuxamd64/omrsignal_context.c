@@ -36,6 +36,7 @@ fillInUnixSignalInfo(struct OMRPortLibrary *portLibrary, void *contextInfo, stru
 uint32_t
 infoForSignal(struct OMRPortLibrary *portLibrary, OMRUnixSignalInfo *info, int32_t index, const char **name, void **value)
 {
+   struct sigcontext *context = (struct sigcontext *) &info->platformSignalInfo.context->uc_mcontext;
 	*name = "";
 
 	switch (index) {
@@ -85,7 +86,11 @@ infoForSignal(struct OMRPortLibrary *portLibrary, OMRUnixSignalInfo *info, int32
 				return OMRPORT_SIG_VALUE_ADDRESS;
 			}
 		}
-		return OMRPORT_SIG_VALUE_UNDEFINED;
+      case OMRPORT_SIG_SIGNAL_RIP_BYTES:
+      case 7:
+         *name = "RIP Bytes";
+         *value = (void *) (context->rip);
+         return OMRPORT_SIG_VALUE_128;
 
 	default:
 		return OMRPORT_SIG_VALUE_UNDEFINED;

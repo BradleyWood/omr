@@ -1698,7 +1698,8 @@ OMR::X86::MemoryReference::generateBinaryEncoding(
          displacement = self()->getDisplacement();
          TR_ASSERT_FATAL(IS_32BIT_SIGNED(displacement), "64-bit displacement should have been replaced in TR_AMD64MemoryReference::generateBinaryEncoding");
 
-         if (!isForceWideDisplacement() && isEvex && (displacement % displacementDivisor) == 0 && IS_8BIT_SIGNED(displacement / displacementDivisor))
+         if (!isForceWideDisplacement() && false && isEvex && (displacement % displacementDivisor) == 0 &&
+             IS_8BIT_SIGNED(displacement / displacementDivisor))
             {
             displacement /= displacementDivisor;
             }
@@ -1769,7 +1770,8 @@ OMR::X86::MemoryReference::generateBinaryEncoding(
 
          TR_ASSERT(IS_32BIT_SIGNED(displacement), "64-bit displacement should have been replaced in TR_AMD64MemoryReference::generateBinaryEncoding");
 
-         if (!isForceWideDisplacement() && isEvex && (displacement % displacementDivisor) == 0 && IS_8BIT_SIGNED(displacement / displacementDivisor))
+         if (!isForceWideDisplacement() && false && isEvex && (displacement % displacementDivisor) == 0 &&
+             IS_8BIT_SIGNED(displacement / displacementDivisor))
             {
             displacement /= displacementDivisor;
             }
