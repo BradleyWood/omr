@@ -21,6 +21,7 @@
 
 #include "codegen/OMRInstOpCode.hpp"
 #include "codegen/CodeGenerator.hpp"
+//#include "OMRFlags.hpp"
 
 const OMR::X86::InstOpCode::OpCodeMetaData OMR::X86::InstOpCode::metadata[NumOpCodes] =
    {
