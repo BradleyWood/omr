@@ -1195,7 +1195,8 @@ OMR::CodeGenerator::canClobberNodesRegister(
    {
    if (!ignoreRefCount && node->getReferenceCount() > count) return false;
 
-   if (self()->useClobberEvaluate()) return true;
+   // If enhanced clobber evaluation is disabled, use basic clobbe evaluation;
+   if (self()->useClobberEvaluate()) return false;
 
    TR::Register *reg = node->getRegister();
    TR::RegisterPair *regPair = reg->getRegisterPair();
@@ -1493,13 +1494,8 @@ void OMR::CodeGenerator::setCurrentBlock(TR::Block *b)
 bool
 OMR::CodeGenerator::useClobberEvaluate()
    {
-#if defined(TR_HOST_S390) || defined(TR_HOST_POWER)
-   if(!self()->comp()->getOption(TR_DisableEnhancedClobberEval))
-      return false;
-#endif
-   return true;
+   return self()->comp()->getOption(TR_DisableEnhancedClobberEval);
    }
-
 
 bool
 OMR::CodeGenerator::opCodeIsNoOp(TR::ILOpCode &opCode)
