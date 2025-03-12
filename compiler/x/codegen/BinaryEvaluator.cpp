@@ -2450,6 +2450,8 @@ TR::Register *OMR::X86::TreeEvaluator::integerDivOrRemEvaluator(TR::Node *node, 
                                                       node->getType(),
                                                       divideInstr->getX86RegInstruction()->getIA32RegRegInstruction(),
                                                       cg));
+
+         generateLabelInstruction(TR::InstOpCode::label, node, generateLabelSymbol(cg), generateVectorPreservationConditions(cg), cg);
          }
 
       // Return the appropriate result register

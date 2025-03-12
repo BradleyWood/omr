@@ -220,6 +220,8 @@ OMR::X86::MemoryReference::MemoryReference(
 
                self()->setUnresolvedDataSnippet(TR::UnresolvedDataSnippet::create(cg, rootLoadOrStore, &_symbolReference, isStore, symRef->canCauseGC()));
                cg->addSnippet(self()->getUnresolvedDataSnippet());
+
+               generateLabelInstruction(TR::InstOpCode::label, NULL, generateLabelSymbol(cg), generateVectorPreservationConditions(cg), cg);
                }
 
             if (!debug("noAddressAddRemat") && canRematerializeAddressAdds)
@@ -246,6 +248,8 @@ OMR::X86::MemoryReference::MemoryReference(
                {
                self()->setUnresolvedDataSnippet(TR::UnresolvedDataSnippet::create(cg, rootLoadOrStore, &_symbolReference, isStore, symRef->canCauseGC()));
                cg->addSnippet(self()->getUnresolvedDataSnippet());
+
+               generateLabelInstruction(TR::InstOpCode::label, NULL, generateLabelSymbol(cg), generateVectorPreservationConditions(cg), cg);
                }
             _baseNode = rootLoadOrStore;
             }
@@ -336,6 +340,8 @@ OMR::X86::MemoryReference::initialize(
       self()->setUnresolvedDataSnippet(TR::UnresolvedDataSnippet::create(cg, 0, &_symbolReference, false, symRef->canCauseGC()));
       cg->addSnippet(self()->getUnresolvedDataSnippet());
       self()->setForceWideDisplacement();
+
+      generateLabelInstruction(TR::InstOpCode::label, NULL, generateLabelSymbol(cg), generateVectorPreservationConditions(cg), cg);
       }
    // TODO: aliasing sets?
 
@@ -362,6 +368,8 @@ OMR::X86::MemoryReference::MemoryReference(
       {
       _dataSnippet = TR::UnresolvedDataSnippet::create(cg, _baseNode, &_symbolReference, false, _symbolReference.canCauseGC());
       cg->addSnippet(_dataSnippet);
+
+      generateLabelInstruction(TR::InstOpCode::label, NULL, generateLabelSymbol(cg), generateVectorPreservationConditions(cg), cg);
       }
    else if (mr.getDataSnippet() != NULL)
       {
@@ -731,6 +739,8 @@ OMR::X86::MemoryReference::populateMemoryReference(
             self()->setUnresolvedDataSnippet(TR::UnresolvedDataSnippet::create(cg, subTree, &_symbolReference, false, symRef->canCauseGC()));
             cg->addSnippet(self()->getUnresolvedDataSnippet());
             self()->setForceWideDisplacement();
+
+            generateLabelInstruction(TR::InstOpCode::label, NULL, generateLabelSymbol(cg), generateVectorPreservationConditions(cg), cg);
             }
 
          // TODO: aliasing sets?

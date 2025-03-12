@@ -281,4 +281,7 @@ class RegisterDependencyConditions: public OMR::RegisterDependencyConditions
 TR::RegisterDependencyConditions  * generateRegisterDependencyConditions(TR::Node *, TR::CodeGenerator *, uint32_t = 0, List<TR::Register> * = 0);
 TR::RegisterDependencyConditions  * generateRegisterDependencyConditions(uint32_t, uint32_t, TR::CodeGenerator *);
 
+TR::RegisterDependencyConditions  * generateVectorPreservationConditions(TR::CodeGenerator *cg);
+TR::RegisterDependencyConditions  * addVectorPreservationConditions(TR::CodeGenerator *cg, TR::RegisterDependencyConditions *deps);
+
 #endif /* OMR_X86_REGISTER_DEPENDENCY_INCL */

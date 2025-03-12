@@ -1311,3 +1311,26 @@ generateRegisterDependencyConditions(TR::Node           *node,
    {
    return new (cg->trHeapMemory()) TR::RegisterDependencyConditions(node, cg, additionalRegDeps);
    }
+
+TR::RegisterDependencyConditions *generateVectorPreservationConditions(TR::CodeGenerator *cg)
+   {
+   TR::RegisterDependencyConditions  *deps = generateRegisterDependencyConditions(0, TR::RealRegister::LastXMMR - TR::RealRegister::FirstXMMR + 1, cg);
+
+   addVectorPreservationConditions(cg, deps);
+   deps->stopAddingConditions();
+
+   return deps;
+   }
+
+TR::RegisterDependencyConditions *addVectorPreservationConditions(TR::CodeGenerator *cg, TR::RegisterDependencyConditions *deps)
+   {
+   for (TR::RealRegister::RegNum regIndex = TR::RealRegister::FirstXMMR; regIndex <= TR::RealRegister::LastXMMR; regIndex = (TR::RealRegister::RegNum)(regIndex + 1))
+      {
+      TR::Register *dummy = cg->allocateRegister(TR_VRF);
+      dummy->setPlaceholderReg();
+      deps->addPostCondition(dummy, regIndex, cg);
+      cg->stopUsingRegister(dummy);
+      }
+
+   return deps;
+   }

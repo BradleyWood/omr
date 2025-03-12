@@ -880,6 +880,8 @@ TR::Register *OMR::X86::TreeEvaluator::fpConvertToLong(TR::Node *node, TR::Symbo
 
       generateLabelInstruction(TR::InstOpCode::label, node, reStartLabel, deps, cg);
 
+      generateLabelInstruction(TR::InstOpCode::label, node, generateLabelSymbol(cg), generateVectorPreservationConditions(cg), cg);
+
       cg->decReferenceCount(child);
       generateInstruction(TR::InstOpCode::FSTPST0, node, cg);
 

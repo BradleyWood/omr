@@ -3405,6 +3405,7 @@ TR::X86CallMemInstruction  * generateCallMemInstruction(TR::Instruction *, TR::I
 
 TR::X86ImmSymInstruction  * generateHelperCallInstruction(TR::Node *, TR_RuntimeHelper, TR::RegisterDependencyConditions  *, TR::CodeGenerator *cg);
 TR::X86ImmSymInstruction  * generateHelperCallInstruction(TR::Instruction *, TR_RuntimeHelper, TR::CodeGenerator *cg);
+TR::X86ImmSymInstruction  * generateHelperCallInstruction(TR::Instruction *, TR_RuntimeHelper, TR::RegisterDependencyConditions *deps, TR::CodeGenerator *cg);
 
 TR::AMD64RegImm64Instruction * generateRegImm64Instruction(TR::InstOpCode::Mnemonic op, TR::Node *node, TR::Register *treg, uint64_t imm, TR::CodeGenerator *cg, int32_t reloKind = TR_NoRelocation);
 
