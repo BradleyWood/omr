@@ -68,11 +68,11 @@ class OpCodeTable : public TR::ILOpCode {
                }
             }
 
-            // Check if it's a vector opcode, e.g. vaddVector128Int32 or vconvVector256Int32ToVector256Float
+            // Check if it's a vector opcode, e.g. vaddVector128Int32 or vconvVector256Int32_Vector256Float
             std::string opcodeAndSrcType = name;
             TR::DataType resType = TR::NoType;
 
-            std::size_t pos = name.find("To");
+            std::size_t pos = name.find('_');
             std::size_t divider = 2;
 
             if (pos != std::string::npos)
