@@ -7539,8 +7539,6 @@ OMR::X86::TreeEvaluator::vbitselectEvaluator(TR::Node *node, TR::CodeGenerator *
    TR::Register *thirdReg = cg->evaluate(thirdChild);
    TR::Register *resultReg = cg->allocateRegister(TR_VRF);
 
-   TR_ASSERT_FATAL(et.isIntegral(), "vbitselect is for integer operations");
-
    TR::InstOpCode xorOpcode = TR::InstOpCode::PXORRegReg;
    TR::InstOpCode andOpcode = TR::InstOpCode::PANDRegReg;
 
@@ -7566,13 +7564,53 @@ OMR::X86::TreeEvaluator::vbitselectEvaluator(TR::Node *node, TR::CodeGenerator *
       generateRegRegInstruction(xorOpcode.getMnemonic(), node, resultReg, secondReg, cg, xorEncoding);
       }
 
-   generateRegRegInstruction(andOpcode.getMnemonic(), node, resultReg, thirdReg, cg, xorEncoding);
+   if (thirdReg->getKind() == TR_VMR)
+      {
+      TR::InstOpCode m2vOpcode = TR::InstOpCode::bad;
+
+      switch (et)
+         {
+         case TR::Int8:
+            m2vOpcode = TR::InstOpCode::VPMOVM2BRegReg;
+            break;
+         case TR::Int16:
+            m2vOpcode = TR::InstOpCode::VPMOVM2WRegReg;
+            break;
+         case TR::Int32:
+         case TR::Float:
+            m2vOpcode = TR::InstOpCode::VPMOVM2DRegReg;
+            break;
+         case TR::Int64:
+         case TR::Double:
+            m2vOpcode = TR::InstOpCode::VPMOVM2QRegReg;
+            break;
+         default:
+            TR_ASSERT_FATAL(false, "Unexpected lane type");
+         }
+
+      OMR::X86::Encoding m2vEncoding = m2vOpcode.getSIMDEncoding(&cg->comp()->target().cpu, vl);
+      TR::Register *tmpVectorReg = cg->allocateRegister(TR_VRF);
+
+      generateRegRegInstruction(m2vOpcode.getMnemonic(), node, tmpVectorReg, thirdReg, cg, m2vEncoding);
+      generateRegRegInstruction(andOpcode.getMnemonic(), node, resultReg, tmpVectorReg, cg, xorEncoding);
+      cg->stopUsingRegister(tmpVectorReg);
+      }
+   else
+      {
+      generateRegRegInstruction(andOpcode.getMnemonic(), node, resultReg, thirdReg, cg, xorEncoding);
+      }
+
    generateRegRegInstruction(xorOpcode.getMnemonic(), node, resultReg, firstReg, cg, xorEncoding);
 
    node->setRegister(resultReg);
    cg->decReferenceCount(firstChild);
    cg->decReferenceCount(secondChild);
    cg->decReferenceCount(thirdChild);
+
+   if (node->getNumChildren() == 4)
+      {
+      cg->recursivelyDecReferenceCount(node->getChild(4));
+      }
 
    return resultReg;
    }

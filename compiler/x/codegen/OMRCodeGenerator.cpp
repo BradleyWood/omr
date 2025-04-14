@@ -1076,7 +1076,6 @@ bool OMR::X86::CodeGenerator::getSupportsOpCodeForAutoSIMD(TR::CPU *cpu, TR::ILO
             }
          break;
       case TR::vbitselect:
-         if (et.isFloatingPoint()) return false;
          // Intentional fallthrough
       case TR::vneg:
          switch (ot.getVectorLength()) {
