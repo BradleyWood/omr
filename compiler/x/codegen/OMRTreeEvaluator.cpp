@@ -5406,7 +5406,7 @@ TR::Register* OMR::X86::TreeEvaluator::vectorFPNaNHelper(TR::Node *node, TR::Reg
 //
 TR::Register* OMR::X86::TreeEvaluator::vectorCompareEvaluator(TR::Node* node, TR::CodeGenerator* cg)
    {
-   TR::DataType type = node->getDataType();
+   TR::DataType type = node->getFirstChild()->getDataType();
    TR::DataType et = type.getVectorElementType();
    TR::VectorLength vl = type.getVectorLength();
    TR::ILOpCode opcode = node->getOpCode();
