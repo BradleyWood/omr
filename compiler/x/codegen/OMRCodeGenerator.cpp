@@ -1030,6 +1030,8 @@ bool OMR::X86::CodeGenerator::getSupportsOpCodeForAutoSIMD(TR::CPU *cpu, TR::ILO
       case TR::msplats:
       case TR::mAllTrue:
       case TR::mmAllTrue:
+      case TR::mFirstTrue:
+      case TR::mLastTrue:
       case TR::mTrueCount:
       case TR::mToLongBits:
           switch (ot.getVectorLength())
