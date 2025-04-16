@@ -78,7 +78,7 @@ class OpCodeTable : public TR::ILOpCode {
             if (pos != std::string::npos)
                {
                opcodeAndSrcType = name.substr(0, pos);
-               std::size_t resTypeStart = pos + 2;
+               std::size_t resTypeStart = pos + 1;
 
                if (name.find("Vector", resTypeStart) != resTypeStart &&
                    name.find("Mask", resTypeStart) != resTypeStart)
