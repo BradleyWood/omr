@@ -126,9 +126,10 @@ TEST_P(XRegMemEncodingTest, encode) {
 }
 
 INSTANTIATE_TEST_CASE_P(Special, XDirectEncodingTest, ::testing::Values(
-    std::make_tuple(TR::InstOpCode::UD2,  "0f0b"),
-    std::make_tuple(TR::InstOpCode::INT3, "cc"),
-    std::make_tuple(TR::InstOpCode::RET,  "c3")
+    std::make_tuple(TR::InstOpCode::UD2,        "0f0b"),
+    std::make_tuple(TR::InstOpCode::INT3,       "cc"),
+    std::make_tuple(TR::InstOpCode::RET,        "c3"),
+    std::make_tuple(TR::InstOpCode::VZEROUPPER, "c5f877")
 ));
 
 INSTANTIATE_TEST_CASE_P(Special, XLabelEncodingTest, ::testing::Values(
