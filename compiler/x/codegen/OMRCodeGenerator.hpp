@@ -533,6 +533,8 @@ class OMR_EXTENSIBLE CodeGenerator : public OMR::CodeGenerator
    bool supportsAddressRematerialization();
    bool supportsXMMRRematerialization();
 
+   bool supportsAPX();
+
    bool doIntMulDecompositionInCG() { return true; };
 
    TR::Instruction *setLastCatchAppendInstruction(TR::Instruction *i) {return (_lastCatchAppendInstruction=i);}
@@ -810,7 +812,7 @@ protected:
       EnableSinglePrecisionMethods             = 0x00000008, ///< support changing FPCW to single precision for individual methods
       EnableRegisterInterferences              = 0x00000010, ///< consider register interferences during register assignment
       EnableRegisterWeights                    = 0x00000020, ///< use register weights in choosing a best register candidate
-      // Available                             = 0x00000040,
+      EnableAPX                                = 0x00000040, ///< use advanced performance extensions (APX)
       // Available                             = 0x00000080,
       EnableImplicitDivideCheck                = 0x00000100, ///< platform can catch hardware exceptions for divide overflow and divide by zero
       GenerateMasmListingSyntax                = 0x00000200, ///< generate Masm-style syntax in the debug listings

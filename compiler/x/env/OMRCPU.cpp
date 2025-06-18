@@ -62,6 +62,16 @@ OMR::X86::CPU::detect(OMRPortLibrary * const omrPortLib)
       omrsysinfo_processor_set_feature(&processorDescription, OMR_FEATURE_X86_AVX512_VPOPCNTDQ, FALSE);
       }
 
+#if defined(TR_TARGET_64BIT)
+   if (!omrsysinfo_processor_has_feature(&processorDescription, OMR_FEATURE_X86_XSAVE_APX))
+      {
+      // Unset APX if not enabled via XCR0
+      omrsysinfo_processor_set_feature(&processorDescription, OMR_FEATURE_X86_APX, FALSE);
+      }
+#else
+   omrsysinfo_processor_set_feature(&processorDescription, OMR_FEATURE_X86_APX, FALSE);
+#endif
+
    return TR::CPU::customize(processorDescription);
    }
 
@@ -77,7 +87,8 @@ OMR::X86::CPU::customize(OMRProcessorDesc processorDescription)
                                         OMR_FEATURE_X86_RTM, OMR_FEATURE_X86_AVX512F, OMR_FEATURE_X86_AVX512VL,
                                         OMR_FEATURE_X86_AVX512BW, OMR_FEATURE_X86_AVX512DQ, OMR_FEATURE_X86_AVX512CD,
                                         OMR_FEATURE_X86_AVX512_VBMI2, OMR_FEATURE_X86_AVX512_VPOPCNTDQ,
-                                        OMR_FEATURE_X86_AVX512_BITALG, OMR_FEATURE_X86_CLWB, OMR_FEATURE_X86_BMI2
+                                        OMR_FEATURE_X86_AVX512_BITALG, OMR_FEATURE_X86_CLWB, OMR_FEATURE_X86_BMI2,
+                                        OMR_FEATURE_X86_APX
    };
 
    OMRProcessorDesc featureMasks;

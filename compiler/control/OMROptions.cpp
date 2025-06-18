@@ -689,6 +689,7 @@ TR::OptionTable OMR::Options::_jitOptions[] = {
    {"enableAOTInlineSystemMethod",        "O\tenable AOT inline methods from system classes", SET_OPTION_BIT(TR_EnableAOTInlineSystemMethod), "F"},
    {"enableAOTMethodEnter",               "O\tenable AOT method enter", SET_OPTION_BIT(TR_EnableAOTMethodEnter), "F" },
    {"enableAOTMethodExit",                "O\tenable AOT method exit", SET_OPTION_BIT(TR_EnableAOTMethodExit), "F" },
+   {"enableAPX",                          "O\tenable advanced performance extensions (APX)", SET_OPTION_BIT(TR_EnableAPX), "F" },
    {"enableAOTRelocationTiming",          "M\tenable timing stats for relocating AOT methods", SET_OPTION_BIT(TR_EnableAOTRelocationTiming), "F"},
    {"enableAOTStats",                     "O\tenable AOT statistics",                      SET_OPTION_BIT(TR_EnableAOTStats), "F"},
    {"enableApplicationThreadYield",       "O\tinsert yield points in application threads", SET_OPTION_BIT(TR_EnableAppThreadYield), "F", NOT_IN_SUBSET},

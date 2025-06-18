@@ -2575,6 +2575,11 @@ bool OMR::X86::CodeGenerator::allowGlobalRegisterAcrossBranch(TR::RegisterCandid
    return true;
    }
 
+bool OMR::X86::CodeGenerator::supportsAPX()
+   {
+   return self()->comp()->getOption(TR_EnableAPX) && self()->comp()->target().cpu.supportsFeature(OMR_FEATURE_X86_APX);
+   }
+
 bool OMR::X86::CodeGenerator::supportsInliningOfIsInstance()
    {
    static const char *envp = feGetEnv("TR_NINLINEISINSTANCE");

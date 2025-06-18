@@ -383,6 +383,40 @@ class InstOpCode: public OMR::InstOpCode
          {
          return (escape == ESCAPE_0F__) && (opcode == 0x01);
          }
+
+      inline bool isMap0() const
+         {
+         return escape == ESCAPE_____;
+         }
+
+      inline bool isMap1() const
+         {
+         return escape == ESCAPE_0F__;
+         }
+
+      inline bool canUseRex2() const
+         {
+         if (!isMap0() && !isMap1() && vex_l != VEX_L___)
+            return false;
+
+         switch (opcode & 0xf0)
+            {
+            case 0x40:
+            case 0x70:
+            case 0xa0:
+               if (opcode == 0xa1)
+                  return true;
+            case 0xe0:
+               return isMap1();
+            case 0x30:
+            case 0x80:
+               return isMap0();
+            default:
+            }
+
+         return true;
+         }
+
       // TBuffer should only be one of the two: Estimator when calculating length, and Writer when generating binaries.
       template <class TBuffer> typename TBuffer::cursor_t encode(typename TBuffer::cursor_t cursor, OMR::X86::Encoding encoding, uint8_t rexbits) const;
       // finalize instruction prefix information, currently only in-use for AVX instructions for VEX.vvvv field

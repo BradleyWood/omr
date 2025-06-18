@@ -80,6 +80,27 @@ OMR::X86::Instruction::initialize(TR::CodeGenerator *cg, TR::RegisterDependencyC
          cond->createRegisterAssociationDirective(self(), cg);
          }
       }
+
+#if defined(TR_TARGET_64BIT)
+   if (!TR::InstOpCode(op).isPseudoOp() && cg->supportsAPX())
+      {
+      TR::MemoryReference *mr = self()->getMemoryReference();
+
+      bool usesRegisters = self()->getSourceRegister() != NULL || self()->getTargetRegister() != NULL ||
+         (mr && (mr->getBaseRegister() != NULL || mr->getIndexRegister() != NULL || mr->getAddressRegister() != NULL));
+
+      if (usesRegisters)
+         {
+         TR::InstOpCode instOpcode = TR::InstOpCode(op);
+         bool implicitArgs = instOpcode.sourceRegIsImplicit() || instOpcode.targetRegIsImplicit();
+
+         if (instOpcode.info().canUseRex2() && !implicitArgs && !instOpcode.isCallOp() && !instOpcode.isBranchOp())
+            {
+
+            }
+         }
+      }
+#endif
    }
 
 

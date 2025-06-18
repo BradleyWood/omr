@@ -118,6 +118,7 @@ class OMR_EXTENSIBLE Instruction : public OMR::Instruction
    virtual bool     needsLockPrefix();
    virtual EnlargementResult enlarge(int32_t requestedEnlargementSize, int32_t maxEnlargementSize, bool allowPartialEnlargement) { return EnlargementResult(0, 0); }
 
+   virtual bool supportAVX() { return false; }
    virtual TR::X86RegInstruction *getX86RegInstruction() { return NULL; }
 
    virtual TR::X86LabelInstruction *getX86LabelInstruction() { return NULL; }
