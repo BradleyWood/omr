@@ -301,6 +301,7 @@ class OMR_EXTENSIBLE TreeEvaluator: public OMR::TreeEvaluator
    static TR::Register *mLongBitsToMaskEvaluator(TR::Node *node, TR::CodeGenerator *cg);
    static TR::Register *mRegLoadEvaluator(TR::Node *node, TR::CodeGenerator *cg);
    static TR::Register *mRegStoreEvaluator(TR::Node *node, TR::CodeGenerator *cg);
+   static TR::Register *binaryMaskEvaluator(TR::Node *node, TR::CodeGenerator *cg);
    static TR::Register *mandEvaluator(TR::Node *node, TR::CodeGenerator *cg);
    static TR::Register *morEvaluator(TR::Node *node, TR::CodeGenerator *cg);
    static TR::Register *mxorEvaluator(TR::Node *node, TR::CodeGenerator *cg);

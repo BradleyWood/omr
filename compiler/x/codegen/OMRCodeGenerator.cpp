@@ -1022,6 +1022,9 @@ bool OMR::X86::CodeGenerator::getSupportsOpCodeForAutoSIMD(TR::CPU *cpu, TR::ILO
             default:
                return false;
             }
+      case TR::mand:
+      case TR::mor:
+      case TR::mxor:
       case TR::mAnyTrue:
       case TR::mmAnyTrue:
       case TR::msplats:
