@@ -1024,6 +1024,7 @@ bool OMR::X86::CodeGenerator::getSupportsOpCodeForAutoSIMD(TR::CPU *cpu, TR::ILO
             }
       case TR::mAnyTrue:
       case TR::mmAnyTrue:
+      case TR::msplats:
       case TR::mAllTrue:
       case TR::mmAllTrue:
       case TR::mTrueCount:
