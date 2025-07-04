@@ -1112,6 +1112,7 @@ bool OMR::X86::CodeGenerator::getSupportsOpCodeForAutoSIMD(TR::CPU *cpu, TR::ILO
       case TR::vloadi:
       case TR::vstore:
       case TR::vstorei:
+      case TR::vblend:
          switch (ot.getVectorLength())
             {
             case TR::VectorLength512:
