@@ -1,0 +1,56 @@
+INST(ADD4, add, 0,
+    ENCODINGS(
+        ENCODING( /* 03 /r ADD r32, r/m32 */
+            PREFIX_LEGACY, _NP, Primary, None, 0x03, _R,
+            MODRM_REG_RW, MODRM_RM_R
+        ),
+        ENCODING( /* 81 /0 id ADD r/m32, imm32 */
+            PREFIX_LEGACY, _NP, Primary, None, 0x81, _0,
+            MODRM_RM_RW, IMM32
+        ),
+        ENCODING( /* EVEX.LLZ.66.MAP4.SCALABLE 03 /r ADD {NF} {ND=1} rv, rv, rv/mv */
+            PREFIX_EVEX_APX, _66, MAP4, LLZ | SCALABLE, 0x03, _R,
+            MODRM_REG_RW, MODRM_RM_R
+        ),
+        ENCODING( /* EVEX.LLZ.NP.MAP4.SCALABLE 81 /0 id ADD {NF} {ND=0} rv/mv, imm32 */
+            PREFIX_EVEX_APX, _NP, MAP4, LLZ | SCALABLE, 0x81, _0,
+            MODRM_RM_RW, IMM32
+        ),
+        ENCODING( /* REX-2 Best guess; add reg32, reg32 */
+            PREFIX_REX_APX, _66, MAP4, LLZ | SCALABLE, 0x03, _R,
+            MODRM_REG_RW, MODRM_RM_R
+        ),
+        ENCODING( /* REX-2 Best guess; add reg32, imm32 */
+            PREFIX_REX_APX, _NP, MAP4, LLZ | SCALABLE, 0x81, _0,
+            MODRM_RM_RW, IMM32
+        )
+    )
+),
+INST(SUB4, add, 0,
+    ENCODINGS(
+        ENCODING( /* 03 /r ADD r32, r/m32 */
+            PREFIX_LEGACY, _NP, Primary, None, 0x2B, _R,
+            MODRM_REG_RW, MODRM_RM_R
+        ),
+        ENCODING( /* 81 /0 id ADD r/m32, imm32 */
+            PREFIX_LEGACY, _NP, Primary, None, 0x81, _5,
+            MODRM_RM_RW, IMM32
+        ),
+        ENCODING( /* EVEX.LLZ.66.MAP4.SCALABLE 03 /r ADD {NF} {ND=1} rv, rv, rv/mv */
+            PREFIX_EVEX_APX, _66, MAP4, LLZ | SCALABLE, 0x2B, _R,
+            MODRM_REG_RW, MODRM_RM_R
+        ),
+        ENCODING( /* EVEX.LLZ.NP.MAP4.SCALABLE 81 /0 id ADD {NF} {ND=0} rv/mv, imm32 */
+            PREFIX_EVEX_APX, _NP, MAP4, LLZ | SCALABLE, 0x81, _0,
+            MODRM_RM_RW, IMM32, NA, NA, ZF
+        ),
+        ENCODING( /* REX-2 Best guess; add reg32, reg32 */
+            PREFIX_REX_APX, _66, MAP4, LLZ | SCALABLE, 0x2B, _R,
+            MODRM_REG_RW, MODRM_RM_R
+        ),
+        ENCODING( /* REX-2 Best guess; add reg32, imm32 */
+            PREFIX_REX_APX, _NP, MAP4, LLZ | SCALABLE, 0x81, _0,
+            MODRM_RM_RW, IMM32
+        )
+    )
+)

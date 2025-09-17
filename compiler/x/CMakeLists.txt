@@ -20,6 +20,7 @@
 #############################################################################
 
 compiler_library(x
+	${CMAKE_CURRENT_LIST_DIR}/codegen/APXTest.cpp
 	${CMAKE_CURRENT_LIST_DIR}/codegen/BinaryCommutativeAnalyser.cpp
 	${CMAKE_CURRENT_LIST_DIR}/codegen/BinaryEvaluator.cpp
 	${CMAKE_CURRENT_LIST_DIR}/codegen/CompareAnalyser.cpp
